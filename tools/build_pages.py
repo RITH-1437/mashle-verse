@@ -148,25 +148,30 @@ def body_compare(p):
 
 
 def body_network(p):
-    return f"""<h1 class="sr-only">{E(p['title'])}</h1>
-  <div class="net-shell">
-    <div class="net-bar">
-      <div><span class="label">Connections</span><div class="chip-row" id="layers"></div></div>
-      <div><span class="label">Show</span><div class="chip-row" id="types"></div></div>
-      <div class="net-find"><label class="label" for="find">Find</label>
-        <div class="field"><span class="ico">{SEARCH_ICO}</span><input class="input" id="find" type="search" autocomplete="off" placeholder="Jump to a record…"></div>
-        <div class="find-results panel" id="find-results" role="listbox" hidden></div></div>
-      <span class="net-count" id="net-count"></span>
+    return f"""<section class="page-head"><div class="wrap">
+    <p class="kicker">{E(p.get('kicker', 'Relationships'))}</p>
+    <h1 class="section-title">{p.get('h1', 'Relationship <em>flow</em>')}</h1>
+    <p class="lead">{E(p.get('lead', 'Pick anyone to see who they are connected to, grouped by kind of relationship. Click a name to put them in the centre.'))}</p>
+  </div></section>
+  <section class="section" style="padding-top:24px"><div class="wrap rel-layout">
+    <aside class="rel-side panel" aria-label="Choose who to centre">
+      <div class="field"><span class="ico">{SEARCH_ICO}</span><input class="input" id="rel-q" type="search" autocomplete="off" placeholder="Find anyone…" aria-label="Find anyone"></div>
+      <div class="chip-row" id="rel-types" aria-label="Record types"></div>
+      <div class="rel-list" id="rel-list">{loading()}</div>
+    </aside>
+    <div class="rel-main">
+      <div class="rel-top">
+        <nav class="rel-trail" id="rel-trail" aria-label="Recently viewed"></nav>
+        <div class="chip-row rel-groups" id="rel-groups" aria-label="Relationship kinds"></div>
+      </div>
+      <div class="flow" id="flow" aria-live="polite">
+        <svg class="flow-lines" id="flow-lines" aria-hidden="true"></svg>
+        <div class="flow-col" id="flow-left"></div>
+        <div class="flow-centre" id="flow-centre"></div>
+        <div class="flow-col" id="flow-right"></div>
+      </div>
     </div>
-    <div class="net-stage" id="stage">
-      <svg id="net" role="group" aria-label="Relationship graph"></svg>
-      <div class="net-loading" id="net-loading"><span class="loader"></span><p>Mapping connections…</p></div>
-      <div class="net-empty" id="net-empty" hidden><div class="state"><h3>Nothing to show</h3><p>Turn a record type back on.</p></div></div>
-      <div class="net-zoom panel"><button type="button" class="btn sm icon" id="zoom-in" aria-label="Zoom in">+</button><button type="button" class="btn sm icon" id="zoom-out" aria-label="Zoom out">−</button><button type="button" class="btn sm icon" id="zoom-fit" aria-label="Fit everything">⤢</button></div>
-      <div class="net-legend panel" id="legend"></div>
-      <aside class="net-panel panel" id="panel" hidden aria-live="polite"></aside>
-    </div>
-  </div>"""
+  </div></section>"""
 
 
 def body_timeline(p):
@@ -193,7 +198,7 @@ def build(file, p):
         attrs += f' data-nav="{p["nav"]}"'
     scripts = ["js/config.js", *[f"js/data/{d}" for d in SITE["data"]], "js/media-index.js",
                "js/engine/core.js", "js/engine/shell.js", "js/engine/viewer.js", f"js/engine/{SCRIPT_OF[kind]}.js"]
-    foot = "" if kind == "network" else f"""
+    foot = f"""
 <footer class="site-foot"><div class="wrap">
   <a href="{SITE['hub']}">← Anime Verse</a>
   <span>{E(SITE['footNote'])}</span>

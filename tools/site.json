@@ -70,7 +70,7 @@
     },
     "network.html": {
       "kind": "network",
-      "title": "Relationship map | Mashle Verse",
+      "title": "Relationships | Mashle Verse",
       "desc": "An interactive map of friendships, family and rivalries in Mashle."
     },
     "timeline.html": {

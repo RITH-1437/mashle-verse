@@ -182,7 +182,7 @@ window.V.config = (() => {
       note: "This page compares recorded facts only. Mashle gives no official power numbers, so none are invented here."
     },
 
-    network: { types: ["character", "org", "creature"] },
+    network: { types: ["character", "org", "creature"], start: "mash" },
 
     timelineKinds: {
       event: { label: "Turning point", color: "#f3d38a" },

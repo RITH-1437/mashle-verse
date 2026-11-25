@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Relationship map | Mashle Verse</title>
+<title>Relationships | Mashle Verse</title>
 <meta name="description" content="An interactive map of friendships, family and rivalries in Mashle.">
 <meta name="theme-color" content="#0b0a10">
 <link rel="icon" href="assets/cover/favicon.svg" type="image/svg+xml">
@@ -17,26 +17,35 @@
 <a class="skip" href="#main">Skip to content</a>
 <header id="nav"></header>
 <main id="main">
-  <h1 class="sr-only">Relationship map | Mashle Verse</h1>
-  <div class="net-shell">
-    <div class="net-bar">
-      <div><span class="label">Connections</span><div class="chip-row" id="layers"></div></div>
-      <div><span class="label">Show</span><div class="chip-row" id="types"></div></div>
-      <div class="net-find"><label class="label" for="find">Find</label>
-        <div class="field"><span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><input class="input" id="find" type="search" autocomplete="off" placeholder="Jump to a record…"></div>
-        <div class="find-results panel" id="find-results" role="listbox" hidden></div></div>
-      <span class="net-count" id="net-count"></span>
+  <section class="page-head"><div class="wrap">
+    <p class="kicker">Relationships</p>
+    <h1 class="section-title">Relationship <em>flow</em></h1>
+    <p class="lead">Pick anyone to see who they are connected to, grouped by kind of relationship. Click a name to put them in the centre.</p>
+  </div></section>
+  <section class="section" style="padding-top:24px"><div class="wrap rel-layout">
+    <aside class="rel-side panel" aria-label="Choose who to centre">
+      <div class="field"><span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><input class="input" id="rel-q" type="search" autocomplete="off" placeholder="Find anyone…" aria-label="Find anyone"></div>
+      <div class="chip-row" id="rel-types" aria-label="Record types"></div>
+      <div class="rel-list" id="rel-list"><div class="state loading"><span class="loader"></span><p>Loading records…</p></div></div>
+    </aside>
+    <div class="rel-main">
+      <div class="rel-top">
+        <nav class="rel-trail" id="rel-trail" aria-label="Recently viewed"></nav>
+        <div class="chip-row rel-groups" id="rel-groups" aria-label="Relationship kinds"></div>
+      </div>
+      <div class="flow" id="flow" aria-live="polite">
+        <svg class="flow-lines" id="flow-lines" aria-hidden="true"></svg>
+        <div class="flow-col" id="flow-left"></div>
+        <div class="flow-centre" id="flow-centre"></div>
+        <div class="flow-col" id="flow-right"></div>
+      </div>
     </div>
-    <div class="net-stage" id="stage">
-      <svg id="net" role="group" aria-label="Relationship graph"></svg>
-      <div class="net-loading" id="net-loading"><span class="loader"></span><p>Mapping connections…</p></div>
-      <div class="net-empty" id="net-empty" hidden><div class="state"><h3>Nothing to show</h3><p>Turn a record type back on.</p></div></div>
-      <div class="net-zoom panel"><button type="button" class="btn sm icon" id="zoom-in" aria-label="Zoom in">+</button><button type="button" class="btn sm icon" id="zoom-out" aria-label="Zoom out">−</button><button type="button" class="btn sm icon" id="zoom-fit" aria-label="Fit everything">⤢</button></div>
-      <div class="net-legend panel" id="legend"></div>
-      <aside class="net-panel panel" id="panel" hidden aria-live="polite"></aside>
-    </div>
-  </div>
+  </div></section>
 </main>
+<footer class="site-foot"><div class="wrap">
+  <a href="https://rith-1437.github.io/anime-verse/">← Anime Verse</a>
+  <span>Anime-safe by default (Seasons 1 and 2). Turn on manga spoilers for everything after the selection exam.</span>
+</div></footer>
 <noscript><p class="wrap" style="padding:20px 0">This encyclopedia needs JavaScript to load its records.</p></noscript>
 <script src="js/config.js"></script>
 <script src="js/data/characters.js"></script>

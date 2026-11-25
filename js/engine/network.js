@@ -1,245 +1,176 @@
 /* ==========================================================================
-   VERSE ENGINE: relationship map (network.html)
-   Force-directed SVG of every visible record of config.network.types and
-   their connections. Layer toggles per relation type, record-type filters,
-   find box, focus mode (click a node: neighbours stay lit, the rest dims),
-   details panel, pan / zoom (drag, wheel, pinch, buttons, keyboard).
-   ?focus=<id> opens focused on that record.
+   VERSE ENGINE: relationship flow (network.html)
+   A structured view instead of one big tangle. One record sits in a centre
+   card; its connections are grouped by kind of relationship into boxes in
+   two columns, and curved lines flow from the centre to every name:
+     left  = roots (family, vessels, teachers, affiliations)
+     right = bonds and conflicts (friends, allies, rivals, enemies)
+   Click a name to make it the centre. A searchable list picks anyone.
+   config.network: { types: [record types], start: "<id>" }.
+   ?focus=<id> opens on that record.
    ========================================================================== */
 (() => {
   "use strict";
   const V = window.V;
   if (!V || !V.ready || document.body.dataset.page !== "network") return;
-  const C = V.config, N = C.network, REL = C.relations;
+  const C = V.config, N = C.network, REL = C.relations, SP = C.spoiler;
   const { $, esc, norm } = V.util;
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = $("#net"), stage = $("#stage");
-  const state = { layers: new Set(Object.keys(REL).filter((t) => REL[t].layer !== false && REL[t].on !== false)), types: new Set(N.types), focus: null, view: { x: 0, y: 0, k: 1 } };
-  let nodes = [], edges = [], byId = new Map();
+  const flow = $("#flow"), lines = $("#flow-lines");
 
-  /* ----------------------------------------------------------- graph data */
-  function build() {
-    const list = V.all.filter((e) => N.types.includes(e._type) && state.types.has(e._type) && V.visible(e));
-    byId = new Map();
-    const r = V.util.rng(7);
-    nodes = list.map((e, i) => {
-      const a = (i / list.length) * Math.PI * 2;
-      const n = { id: e.id, e, x: Math.cos(a) * 300 + r() * 40, y: Math.sin(a) * 300 + r() * 40, vx: 0, vy: 0, deg: 0 };
-      byId.set(e.id, n); return n;
-    });
-    const seen = new Set();
-    edges = [];
-    nodes.forEach((n) => V.relations(n.id).forEach((rel) => {
-      if (!byId.has(rel.id) || !REL[rel.t] || REL[rel.t].layer === false) return;
-      const key = [n.id, rel.id].sort().join("|") + "|" + rel.t;
-      if (seen.has(key)) return;
-      seen.add(key);
-      edges.push({ a: byId.get(n.id), b: byId.get(rel.id), t: rel.t, label: rel.label });
-    }));
-    edges.forEach((ed) => { ed.a.deg++; ed.b.deg++; });
-    simulate();
-  }
-  /* Small deterministic force simulation: repulsion, springs, gravity. */
-  function simulate() {
-    const live = edges.filter((e) => state.layers.has(e.t));
-    for (let it = 0; it < 320; it++) {
-      const alpha = 1 - it / 320;
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i];
-        for (let j = i + 1; j < nodes.length; j++) {
-          const b = nodes[j];
-          let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy || 0.01;
-          const f = 16000 / d2;
-          const d = Math.sqrt(d2); dx /= d; dy /= d;
-          a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
-        }
-      }
-      live.forEach(({ a, b }) => {
-        const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const f = (d - 150) * 0.01;
-        a.vx += (dx / d) * f; a.vy += (dy / d) * f; b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
-      });
-      nodes.forEach((n) => {
-        n.vx -= n.x * 0.0022; n.vy -= n.y * 0.0022;
-        const sp = Math.hypot(n.vx, n.vy), max = 30 * alpha + 1;
-        if (sp > max) { n.vx = (n.vx / sp) * max; n.vy = (n.vy / sp) * max; }
-        n.x += n.vx; n.y += n.vy; n.vx *= 0.6; n.vy *= 0.6;
-      });
-    }
-  }
-
-  /* --------------------------------------------------------------- render */
-  const el = (tag, attrs, parent) => { const x = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => x.setAttribute(k, v)); if (parent) parent.appendChild(x); return x; };
-  function draw() {
-    svg.innerHTML = "";
-    const world = el("g", { id: "world" }, svg);
-    const ge = el("g", { class: "edges" }, world), gn = el("g", { class: "nodes" }, world);
-    edges.forEach((ed) => {
-      const d = REL[ed.t];
-      ed.el = el("line", { x1: ed.a.x, y1: ed.a.y, x2: ed.b.x, y2: ed.b.y, class: "edge" + (state.layers.has(ed.t) ? "" : " off"), stroke: d.color, "stroke-dasharray": d.dash || "" }, ge);
-      el("title", {}, ed.el).textContent = `${V.show.name(ed.a.e)} and ${V.show.name(ed.b.e)}: ${ed.label || d.label}`;
-    });
-    nodes.forEach((n) => {
-      const r = 14 + Math.min(16, n.deg * 1.4), col = V.colorOf(n.e);
-      const g = el("g", { class: "node", transform: `translate(${n.x},${n.y})`, tabindex: "0", role: "button", "aria-label": `${V.show.name(n.e)}, ${V.show.typeLabel(n.e)}`, "data-node": n.id, style: `--c:${col}` }, gn);
-      el("circle", { r: r + 4, class: "halo" }, g);
-      const cid = "c-" + n.id;
-      const clip = el("clipPath", { id: cid }, g); el("circle", { r }, clip);
-      const art = V.media.art(n.e);
-      el("circle", { r, class: "disc" }, g);
-      if (art) el("image", { href: art, x: -r, y: -r, width: r * 2, height: r * 2, "clip-path": `url(#${cid})`, preserveAspectRatio: n.e._type === "org" ? "xMidYMid meet" : "xMidYMid slice" }, g);
-      else { const t = el("text", { class: "mono", "text-anchor": "middle", dy: "0.35em", "font-size": r * 0.75 }, g); t.textContent = V.util.initials(V.show.name(n.e)); }
-      const lab = el("text", { class: "label", y: r + 15, "text-anchor": "middle" }, g);
-      lab.textContent = V.show.name(n.e);
-      n.g = g; n.r = r;
-    });
-    applyView(); highlight();
-    $("#net-count").textContent = `${nodes.length} records · ${edges.filter((e) => state.layers.has(e.t)).length} connections`;
-    $("#net-empty").hidden = nodes.length > 0;
-  }
-  function neighbours(id) {
-    const s = new Set([id]);
-    edges.forEach((e) => { if (!e.el || !state.layers.has(e.t)) return; if (e.a.id === id) s.add(e.b.id); if (e.b.id === id) s.add(e.a.id); });
-    return s;
-  }
-  function highlight() {
-    const near = state.focus ? neighbours(state.focus) : null;
-    nodes.forEach((n) => n.g && n.g.classList.toggle("dim", !!near && !near.has(n.id)));
-    nodes.forEach((n) => n.g && n.g.classList.toggle("focus", n.id === state.focus));
-    edges.forEach((e) => { if (!e.el) return; e.el.classList.toggle("off", !state.layers.has(e.t)); e.el.classList.toggle("dim", !!near && !(e.a.id === state.focus || e.b.id === state.focus)); });
-  }
-
-  /* ---------------------------------------------------------- pan / zoom */
-  function applyView() { const w = $("#world"); if (w) w.setAttribute("transform", `translate(${state.view.x},${state.view.y}) scale(${state.view.k})`); }
-  function fit() {
-    if (!nodes.length) return;
-    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
-    const minX = Math.min(...xs) - 60, maxX = Math.max(...xs) + 60, minY = Math.min(...ys) - 60, maxY = Math.max(...ys) + 60;
-    const W = stage.clientWidth, H = stage.clientHeight;
-    const k = Math.min(W / (maxX - minX), H / (maxY - minY), 1.6);
-    state.view = { k, x: W / 2 - ((minX + maxX) / 2) * k, y: H / 2 - ((minY + maxY) / 2) * k };
-    applyView();
-  }
-  function zoom(f, cx = stage.clientWidth / 2, cy = stage.clientHeight / 2) {
-    const v = state.view, k = Math.min(4, Math.max(0.2, v.k * f));
-    v.x = cx - ((cx - v.x) * k) / v.k; v.y = cy - ((cy - v.y) * k) / v.k; v.k = k; applyView();
-  }
-  function centreOn(n) {
-    const v = state.view; v.k = Math.max(v.k, 1.1);
-    v.x = stage.clientWidth / 2 - n.x * v.k; v.y = stage.clientHeight / 2 - n.y * v.k; applyView();
-  }
-  let drag = null; const pts = new Map();
-  stage.addEventListener("pointerdown", (e) => {
-    if (e.target.closest(".net-panel, .net-zoom, .net-legend")) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    drag = { x: e.clientX, y: e.clientY, vx: state.view.x, vy: state.view.y, moved: false, dist: null };
-    stage.setPointerCapture(e.pointerId);
+  /* relation kinds collapse into groups (config.relations[].group) */
+  const ROOTS = new Set(["family", "spouse", "vessel", "mentor", "member"]);
+  const GROUPS = [];
+  Object.entries(REL).forEach(([t, d]) => {
+    const g = d.group || d.label;
+    let G = GROUPS.find((x) => x.name === g);
+    if (!G) GROUPS.push(G = { name: g, color: d.color, side: ROOTS.has(t) ? "left" : "right" });
   });
-  stage.addEventListener("pointermove", (e) => {
-    if (!drag || !pts.has(e.pointerId)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) {
-      const [p, q] = [...pts.values()], d = Math.hypot(p.x - q.x, p.y - q.y);
-      if (drag.dist) zoom(d / drag.dist, (p.x + q.x) / 2 - stage.getBoundingClientRect().left, (p.y + q.y) / 2 - stage.getBoundingClientRect().top);
-      drag.dist = d; drag.moved = true; return;
-    }
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-    state.view.x = drag.vx + dx; state.view.y = drag.vy + dy; applyView();
-  });
-  const end = (e) => {
-    pts.delete(e.pointerId);
-    if (!pts.size) {
-      if (drag && !drag.moved) { const g = document.elementFromPoint(e.clientX, e.clientY); const n = g && g.closest && g.closest("[data-node]"); if (n) focus(n.dataset.node); else if (e.target.closest && e.target.closest("svg")) focus(null); }
-      drag = null;
-    }
+  const groupOf = (t) => (REL[t] || {}).group || (REL[t] || {}).label || t;
+  const G = (name) => GROUPS.find((x) => x.name === name) || { name, color: "var(--accent)", side: "right" };
+  const gIndex = (g) => { const i = GROUPS.findIndex((x) => x.name === g); return i < 0 ? 99 : i; };
+
+  const state = { focus: null, types: new Set(N.types), off: new Set(), q: "", trail: [] };
+  const inMap = (e) => e && N.types.includes(e._type) && V.visible(e);
+  const pool = () => V.all.filter((e) => inMap(e) && state.types.has(e._type));
+
+  /* visible connections of `id`, one entry per (group, person) */
+  function connections(id, { all = false } = {}) {
+    const out = [];
+    V.relations(id).forEach((r) => {
+      const e = V.get(r.id);
+      if (!inMap(e) || !state.types.has(e._type)) return;
+      const g = groupOf(r.t);
+      if (!all && state.off.has(g)) return;
+      const label = r.label || (REL[r.t] || {}).label || "";
+      const hit = out.find((x) => x.g === g && x.e === e);
+      if (hit) { if (label && !hit.labels.includes(label)) hit.labels.push(label); }
+      else out.push({ g, e, labels: label ? [label] : [] });
+    });
+    return out;
+  }
+  const degree = (id) => new Set(connections(id, { all: true }).map((x) => x.e.id)).size;
+
+  /* ---------------------------------------------------------------- flow */
+  function groupBox(name, rows, i) {
+    const g = G(name);
+    rows.sort((a, b) => V.show.name(a.e).localeCompare(V.show.name(b.e)));
+    return `<section class="fg panel" style="--c:${g.color};--i:${i}"><h3><i class="swatch" style="background:${g.color}"></i>${esc(name)}<span>${rows.length}</span></h3>
+      ${rows.map((r) => `<div class="fr" data-row="${r.e.id}">
+        <button type="button" class="fr-go" data-goto="${r.e.id}" title="Put ${esc(V.show.name(r.e))} in the centre">${V.artHTML(r.e)}<span><b>${esc(V.show.name(r.e))}</b><small>${esc(r.labels.join(" · ") || name)}</small></span></button>
+        <button type="button" class="btn sm icon fr-open" data-open="${r.e.id}" aria-label="Open ${esc(V.show.name(r.e))}'s profile" title="Open profile">↗</button></div>`).join("")}</section>`;
+  }
+  function drawFlow() {
+    const c = V.get(state.focus), list = connections(state.focus);
+    const people = new Set(list.map((x) => x.e.id)).size;
+    const hidden = V.relations(state.focus, { includeHidden: true }).filter((r) => N.types.includes((V.get(r.id) || {})._type)).length
+      - V.relations(state.focus).filter((r) => N.types.includes((V.get(r.id) || {})._type)).length;
+    const byGroup = new Map();
+    list.forEach((x) => { if (!byGroup.has(x.g)) byGroup.set(x.g, []); byGroup.get(x.g).push(x); });
+    const names = [...byGroup.keys()].sort((a, b) => gIndex(a) - gIndex(b));
+    const side = (s) => names.filter((n) => G(n).side === s).map((n, i) => groupBox(n, byGroup.get(n), i)).join("");
+    const left = side("left"), right = side("right");
+    $("#flow-left").innerHTML = left || `<p class="flow-none">No family, teachers or affiliations ${state.off.size ? "with these filters" : "on record"}.</p>`;
+    $("#flow-right").innerHTML = right || `<p class="flow-none">No friends, allies, rivals or enemies ${state.off.size ? "with these filters" : "on record"}.</p>`;
+    $("#flow-centre").innerHTML = `<div class="fc panel" style="--c:${V.colorOf(c)}">
+      <div class="fc-art">${V.artHTML(c, { eager: true })}</div>
+      <p class="kicker">${esc(V.show.typeLabel(c))}</p><h2>${esc(V.show.name(c))}</h2><p class="fc-sub">${esc(V.show.subtitle(c))}</p>
+      <p class="fc-count"><b>${people}</b> connection${people === 1 ? "" : "s"}${hidden > 0 ? `<br><span class="danger">${hidden} hidden as ${esc(SP.full.toLowerCase())} spoilers</span>` : ""}</p>
+      <button type="button" class="btn primary sm" data-open="${c.id}">Open profile</button></div>`;
+    flow.classList.remove("enter"); void flow.offsetWidth; flow.classList.add("enter");
+    requestAnimationFrame(drawLines);
+  }
+  /* curves from the centre card to every row, drawn after layout */
+  function drawLines() {
+    const box = flow.getBoundingClientRect(), card = $("#flow-centre .fc");
+    if (!card || getComputedStyle(lines).display === "none") { lines.innerHTML = ""; return; }
+    const cr = card.getBoundingClientRect();
+    lines.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+    lines.setAttribute("width", box.width); lines.setAttribute("height", box.height);
+    lines.innerHTML = [...flow.querySelectorAll(".fr")].map((row) => {
+      const r = row.getBoundingClientRect(), left = row.closest("#flow-left");
+      const col = getComputedStyle(row.closest(".fg")).getPropertyValue("--c");
+      const sx = (left ? cr.left : cr.right) - box.left, sy = cr.top + cr.height / 2 - box.top;
+      const ex = (left ? r.right : r.left) - box.left, ey = r.top + r.height / 2 - box.top, mx = (sx + ex) / 2;
+      return `<path class="fl" data-for="${row.dataset.row}" d="M${sx.toFixed(1)} ${sy.toFixed(1)}C${mx.toFixed(1)} ${sy.toFixed(1)} ${mx.toFixed(1)} ${ey.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}" style="stroke:${col}"/>`;
+    }).join("");
+  }
+  const hot = (id) => {
+    flow.classList.toggle("hot", !!id);
+    flow.querySelectorAll(".fr").forEach((x) => x.classList.toggle("on", x.dataset.row === id));
+    lines.querySelectorAll(".fl").forEach((x) => x.classList.toggle("on", x.dataset.for === id));
   };
-  stage.addEventListener("pointerup", end);
-  stage.addEventListener("pointercancel", (e) => { pts.delete(e.pointerId); drag = null; });
-  stage.addEventListener("wheel", (e) => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-  $("#zoom-in").addEventListener("click", () => zoom(1.25));
-  $("#zoom-out").addEventListener("click", () => zoom(0.8));
-  $("#zoom-fit").addEventListener("click", () => { focus(null); fit(); });
-  svg.addEventListener("keydown", (e) => {
-    const n = e.target.closest && e.target.closest("[data-node]");
-    if (n && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); focus(n.dataset.node); }
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.target.closest("input, select, textarea") || V.viewer.isOpen()) return;
-    if (e.key === "+" || e.key === "=") zoom(1.2); else if (e.key === "-") zoom(0.83); else if (e.key === "0") fit();
-    else if (e.key === "Escape" && state.focus) focus(null);
-  });
 
-  /* ---------------------------------------------------------------- focus */
-  function focus(id) {
-    state.focus = id && byId.has(id) ? id : null;
-    highlight();
-    const p = $("#panel");
-    if (!state.focus) { p.hidden = true; return; }
-    const n = byId.get(state.focus), e = n.e;
-    const rels = V.relations(e.id).filter((r) => byId.has(r.id) && REL[r.t] && state.layers.has(r.t));
-    p.hidden = false;
-    p.style.setProperty("--c", V.colorOf(e));
-    p.innerHTML = `<div class="panel-head">${esc(V.show.typeLabel(e))}<button type="button" class="btn sm icon" data-panel-close aria-label="Close details">✕</button></div>
-      <div class="np-top">${V.artHTML(e)}<div><h3>${esc(V.show.name(e))}</h3><p>${esc(V.show.subtitle(e))}</p></div></div>
-      <p class="np-bio">${esc((e.bio || e.note || "").slice(0, 220))}${(e.bio || e.note || "").length > 220 ? "…" : ""}</p>
-      <p class="label">${rels.length} visible connection${rels.length === 1 ? "" : "s"}</p>
-      <div class="np-rels" data-open-group>${rels.map((r) => `<button type="button" class="np-rel" data-goto="${r.id}" style="--c:${REL[r.t].color}"><span>${esc(V.show.name(V.get(r.id)))}</span><small>${esc(r.label || REL[r.t].label)}</small></button>`).join("")}</div>
-      <div class="v-actions"><button type="button" class="btn primary sm" data-open="${e.id}">Open profile</button></div>`;
-    centreOn(n);
-    try { const u = new URL(location.href); u.searchParams.set("focus", state.focus); history.replaceState(null, "", u.pathname + u.search); } catch (err) { /* cosmetic */ }
+  /* ------------------------------------------------------ side and chips */
+  function drawList() {
+    const terms = norm(state.q).split(/\s+/).filter(Boolean);
+    const items = pool().filter((e) => !terms.length || terms.every((t) => e._name.includes(t)));
+    $("#rel-list").innerHTML = N.types.filter((t) => state.types.has(t)).map((t) => {
+      const l = items.filter((e) => e._type === t).sort((a, b) => V.show.name(a).localeCompare(V.show.name(b)));
+      return l.length ? `<h3>${esc(C.types[t].plural)} <span>${l.length}</span></h3>` + l.map((e) => `<button type="button" class="rel-item" data-goto="${e.id}" style="--c:${V.colorOf(e)}" ${e.id === state.focus ? 'aria-current="true"' : ""}>
+        ${V.artHTML(e)}<span>${esc(V.show.name(e))}</span><small title="Connections">${degree(e.id)}</small></button>`).join("") : "";
+    }).join("") || '<p class="soft" style="padding:8px">No one matches.</p>';
+    const cur = $("#rel-list [aria-current]");
+    if (cur && !state.q) { const L = $("#rel-list"); L.scrollTop = cur.offsetTop - L.offsetTop - L.clientHeight / 2; }
   }
-  $("#panel").addEventListener("click", (e) => {
-    if (e.target.closest("[data-panel-close]")) focus(null);
-    const g = e.target.closest("[data-goto]"); if (g) focus(g.dataset.goto);
-  });
+  function drawControls() {
+    $("#rel-types").innerHTML = N.types.length > 1 ? N.types.map((t) => `<button type="button" class="chip${state.types.has(t) ? " active" : ""}" data-type="${t}" aria-pressed="${state.types.has(t)}">${esc(C.types[t].plural)}</button>`).join("") : "";
+    const all = connections(state.focus, { all: true });
+    $("#rel-groups").innerHTML = GROUPS.filter((g) => all.some((x) => x.g === g.name)).map((g) => {
+      const k = all.filter((x) => x.g === g.name).length, on = !state.off.has(g.name);
+      return `<button type="button" class="chip${on ? " active" : ""}" data-group="${esc(g.name)}" aria-pressed="${on}" style="--c:${g.color}"><i class="swatch" style="background:${g.color}"></i>${esc(g.name)} <i>${k}</i></button>`;
+    }).join("");
+    $("#rel-trail").innerHTML = state.trail.length > 1
+      ? '<span>Path:</span>' + state.trail.map((id, i) => `${i ? '<span aria-hidden="true">›</span>' : ""}<button type="button" data-goto="${id}" ${id === state.focus ? 'aria-current="true"' : ""}>${esc(V.show.name(V.get(id)))}</button>`).join("")
+      : "<span>Click any name to put them in the centre.</span>";
+  }
 
-  /* ------------------------------------------------------- controls / UI */
-  function controls() {
-    /* only relation kinds that can connect two of the mapped record types */
-    const present = new Set(edges.map((e) => e.t));
-    $("#layers").innerHTML = Object.entries(REL).filter(([t, d]) => d.layer !== false && present.has(t)).map(([t, d]) =>
-      `<button type="button" class="chip${state.layers.has(t) ? " active" : ""}" data-layer="${t}" aria-pressed="${state.layers.has(t)}" style="--c:${d.color}"><i class="swatch" style="background:${d.color}"></i>${esc(d.group || d.label)}</button>`).join("");
-    $("#types").innerHTML = N.types.map((t) => `<button type="button" class="chip${state.types.has(t) ? " active" : ""}" data-type="${t}" aria-pressed="${state.types.has(t)}">${esc(C.types[t].plural)}</button>`).join("");
+  /* --------------------------------------------------------------- focus */
+  function focus(id, { push = true } = {}) {
+    const e = V.get(id);
+    if (!inMap(e) || !state.types.has(e._type)) return false;
+    state.focus = id;
+    state.trail = state.trail.filter((x) => inMap(V.get(x)));
+    if (push) { state.trail = state.trail.filter((x) => x !== id); state.trail.push(id); state.trail = state.trail.slice(-6); }
+    drawFlow(); drawControls(); drawList();
+    try { const u = new URL(location.href); u.searchParams.set("focus", id); history.replaceState(null, "", u.pathname + u.search); } catch (err) { /* cosmetic */ }
+    return true;
   }
-  $("#layers").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-layer]"); if (!b) return;
-    const t = b.dataset.layer; state.layers.has(t) ? state.layers.delete(t) : state.layers.add(t);
-    controls(); highlight(); $("#net-count").textContent = `${nodes.length} records · ${edges.filter((x) => state.layers.has(x.t)).length} connections`;
-  });
-  $("#types").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-type]"); if (!b) return;
-    const t = b.dataset.type;
-    if (state.types.has(t) && state.types.size === 1) return;
-    state.types.has(t) ? state.types.delete(t) : state.types.add(t);
-    rebuild(); controls();
-  });
-  const find = $("#find"), res = $("#find-results");
-  find.addEventListener("input", () => {
-    const q = norm(find.value.trim());
-    if (!q) { res.hidden = true; return; }
-    const hits = nodes.filter((n) => n.e._name.includes(q)).slice(0, 8);
-    res.hidden = false;
-    res.innerHTML = hits.length ? hits.map((n) => `<button type="button" role="option" data-goto="${n.id}">${esc(V.show.name(n.e))} <small>${esc(V.show.typeLabel(n.e))}</small></button>`).join("") : '<p class="soft">No visible record matches.</p>';
-  });
-  find.addEventListener("keydown", (e) => { if (e.key === "Enter") { const b = res.querySelector("[data-goto]"); if (b) { e.preventDefault(); b.click(); } } if (e.key === "Escape") { res.hidden = true; } });
-  res.addEventListener("click", (e) => { const b = e.target.closest("[data-goto]"); if (b) { focus(b.dataset.goto); res.hidden = true; find.value = ""; } });
-  function legend() {
-    $("#legend").innerHTML = N.types.map((t) => `<span><i style="background:${C.types[t].color}"></i>${esc(C.types[t].plural)}</span>`).join("");
-  }
-  function rebuild() {
-    const keep = state.focus;
-    build(); draw(); fit();
-    if (keep && byId.has(keep)) focus(keep); else focus(null);
-  }
-  V.spoilers.onChange(() => { rebuild(); controls(); });
-  addEventListener("resize", V.util.debounce(fit, 200));
+  const fallback = () => { const s = V.get(N.start); return inMap(s) && state.types.has(s._type) ? N.start : (pool().sort((a, b) => degree(b.id) - degree(a.id))[0] || {}).id; };
 
-  legend();
-  requestAnimationFrame(() => {
-    build(); controls(); draw(); fit();
-    $("#net-loading").hidden = true;
-    const f = new URLSearchParams(location.search).get("focus");
-    if (f) { if (byId.has(f)) focus(f); else if (V.get(f)) V.notify(`${V.show.name(V.get(f))} isn't on the map with the current filters or spoiler mode.`, { title: "Not on the map" }); }
+  /* -------------------------------------------------------------- events */
+  document.addEventListener("click", (ev) => {
+    const g = ev.target.closest("[data-goto]");
+    if (g && !g.closest(".viewer, .palette")) {
+      const fromList = !!g.closest("#rel-list");
+      focus(g.dataset.goto);
+      if (fromList && matchMedia("(max-width: 980px)").matches) flow.scrollIntoView({ behavior: V.util.reducedMotion() ? "auto" : "smooth", block: "start" });
+      else if (!fromList && !g.closest("#rel-trail")) $("#rel-trail").scrollIntoView({ behavior: V.util.reducedMotion() ? "auto" : "smooth", block: "nearest" });
+      return;
+    }
+    const t = ev.target.closest("#rel-types [data-type]");
+    if (t) {
+      const k = t.dataset.type;
+      if (state.types.has(k) && state.types.size === 1) return;
+      state.types.has(k) ? state.types.delete(k) : state.types.add(k);
+      if (!focus(state.focus, { push: false })) focus(fallback());
+      return;
+    }
+    const gr = ev.target.closest("#rel-groups [data-group]");
+    if (gr) { const k = gr.dataset.group; state.off.has(k) ? state.off.delete(k) : state.off.add(k); drawFlow(); drawControls(); }
   });
+  flow.addEventListener("mouseover", (ev) => { const r = ev.target.closest(".fr"); hot(r ? r.dataset.row : null); });
+  flow.addEventListener("mouseleave", () => hot(null));
+  flow.addEventListener("focusin", (ev) => { const r = ev.target.closest(".fr"); hot(r ? r.dataset.row : null); });
+  $("#rel-q").addEventListener("input", V.util.debounce((ev) => { state.q = ev.target.value; drawList(); }, 100));
+  $("#rel-q").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { const b = $("#rel-list [data-goto]"); if (b) { ev.preventDefault(); b.click(); } } });
+  V.spoilers.onChange(() => { if (!focus(state.focus, { push: false })) focus(fallback()); });
+  if ("ResizeObserver" in window) new ResizeObserver(() => requestAnimationFrame(drawLines)).observe(flow);
+  else addEventListener("resize", V.util.debounce(drawLines, 120));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawLines);
+
+  const want = new URLSearchParams(location.search).get("focus");
+  if (want && !focus(want)) {
+    if (V.get(want)) V.notify(`${V.show.name(V.get(want))} isn't on the map in the current spoiler mode.`, { title: "Not on the map" });
+    focus(fallback());
+  } else if (!want) focus(fallback());
 })();
