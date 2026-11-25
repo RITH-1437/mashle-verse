@@ -1,0 +1,304 @@
+/* ==========================================================================
+   VERSE ENGINE: record viewer
+   --------------------------------------------------------------------------
+   V.viewer.open(id, { list, tab })  profile for any record: overview,
+       abilities, relations, history and forms tabs; prev/next through
+       `list`; source-only details sealed until revealed; ?view=<id> links.
+   V.viewer.lightbox(id, { list })   full-screen artwork with zoom.
+   Record rows come from config.fields[type] so each universe decides
+   what a profile shows.
+   ========================================================================== */
+(() => {
+  "use strict";
+  const V = window.V;
+  if (!V || !V.util) return;
+  const C = V.config, SP = C.spoiler;
+  const { esc } = V.util;
+  const S = V.show;
+
+  let root = null;
+  const state = { id: null, list: [], tab: "overview" };
+  let lastFocus = null;
+
+  /* ------------------------------------------------- helpers for config */
+  const ent = (id) => V.get(id);
+  const link = (id) => { const e = ent(id); return e && V.visible(e) ? `<button type="button" class="badge link" data-open="${esc(id)}" style="--c:${V.colorOf(e)}">${esc(S.name(e))}</button>` : ""; };
+  const links = (ids) => (ids || []).map(link).filter(Boolean).join(" ");
+  /* H: helpers passed to config.fields functions */
+  V.h = {
+    esc, link, links,
+    refs: (e, f) => links(V.refs(e, f)),
+    rank: (e) => { const r = V.rankOf(e); return r.id ? `<span class="rank inline" style="--c:${r.color}">${esc(r.short || r.id)}</span> ${esc(r.label)}${e.rankNote ? `<br><small class="soft">${esc(e.rankNote)}</small>` : ""}${!V.spoilers.on && e.rankM ? ' <span class="badge spoiler">later change hidden</span>' : ""}` : "Not stated"; },
+    arc: (e) => esc(S.arc(e.arc)),
+    orgs: (e) => links(V.refs(e, "orgs")),
+    users: (type, id, field = "users") => links(V.ofType(type).filter((x) => V.visible(x) && V.refs(x, field).includes(id)).map((x) => x.id))
+  };
+
+  const chip = (id, note = "") => {
+    const e = ent(id);
+    if (!e) return "";
+    return `<button type="button" class="rel-chip" data-open="${esc(id)}" style="--c:${V.colorOf(e)}">${V.artHTML(e)}<span>${esc(S.name(e))}${note ? ` <small>· ${esc(note)}</small>` : ""}</span></button>`;
+  };
+  /* Sealed text stays out of the DOM until revealed, so screen readers,
+     find-in-page and translators can't read it through the blur. */
+  const sealed = new Map();
+  const spoilerBlock = (html) => {
+    if (V.spoilers.on) return html;
+    const key = "s" + sealed.size;
+    sealed.set(key, html);
+    const lines = Math.min(6, Math.max(1, Math.round(html.replace(/<[^>]+>/g, "").length / 70)));
+    const bars = Array.from({ length: lines }, (_, i) => `<span class="sb-bar" style="width:${i === lines - 1 && lines > 1 ? 55 : 92 + (i % 2) * 6}%"></span>`).join("");
+    return `<div class="spoiler-block" data-sealed="${key}"><div class="sb-head">${V.ICON.lock.replace("<svg", '<svg width="14" height="14"')}${esc(SP.locked)}</div>
+      <div class="sb-body" aria-hidden="true">${bars}</div><div class="sb-reveal"><button type="button" class="btn sm" data-reveal>Reveal this once</button></div></div>`;
+  };
+  V.spoilerBlock = spoilerBlock;
+  const row = (k, v) => (v ? `<div class="k">${esc(k)}</div><div>${v}</div>` : "");
+
+  /* records of `type` that reference e through `field` (e.g. techniques used) */
+  const usedBy = (e) => (C.refs || []).filter((R) => R.power).flatMap((R) =>
+    V.ofType(R.type).filter((x) => V.refs(x, R.field).includes(e.id)).map((x) => ({ x, R, m: !(x[R.field] || []).includes(e.id) })));
+
+  function tabsFor(e) {
+    const t = [["overview", "Overview"]];
+    if ((e.abilities || []).length || usedBy(e).length) t.push(["powers", C.labels.powers || "Abilities"]);
+    t.push(["relations", "Relations"], ["history", "History"]);
+    if ((e.forms || []).length) t.push(["forms", C.labels.forms || "Evolution"]);
+    return t;
+  }
+
+  /* -------------------------------------------------------------- panels */
+  function overview(e) {
+    const col = V.colorOf(e);
+    const titles = S.titles(e).map((t) => `<span class="badge" style="--c:${col}">${esc(t)}</span>`).join(" ");
+    const hiddenTitles = !V.spoilers.on && (e.titlesM || []).length;
+    const rows = (C.fields[e._type] || []).map(([k, fn]) => row(k, fn(e, V.h))).join("")
+      + row("Status", esc(S.status(e))) + row("First appearance", esc(e.first || "Unknown")) + row("Story arc", esc(S.arc(e.arc)));
+    const text = e.bio || e.note || "";
+    return `${titles || hiddenTitles ? `<h4>Titles</h4><div class="chip-row">${titles}${hiddenTitles ? ` <span class="badge spoiler">+${e.titlesM.length} hidden</span>` : ""}</div>` : ""}
+      <h4>Record</h4><div class="stat-table">${rows}</div>
+      ${e.effect ? `<h4>${esc(C.labels.effect || "Effect")}</h4><p>${esc(e.effect)}</p>` : ""}
+      <h4>Summary</h4><p>${esc(text)}</p>
+      ${e.bioM ? spoilerBlock(`<p style="margin:0">${esc(e.bioM)}</p>`) : ""}
+      ${e.canon === "check" ? `<p class="note-check">Some details of this entry still need checking against the source. Only confirmed facts are shown.</p>` : ""}`;
+  }
+  function powers(e) {
+    const groups = {};
+    usedBy(e).forEach(({ x, R, m }) => (groups[R.powerLabel] = groups[R.powerLabel] || []).push({ x, m }));
+    const tiles = Object.entries(groups).map(([label, list]) => `<h4>${esc(label)}</h4><div class="ability-list">${list.map(({ x }) =>
+      V.visible(x) ? `<button type="button" class="ability" data-open="${x.id}" style="--c:${V.colorOf(x)}"><b>${esc(S.name(x))}</b><span>${esc(S.subtitle(x))}</span></button>`
+        : `<div class="ability locked"><b>Classified</b><span>${esc(SP.locked)}</span></div>`).join("")}</div>`).join("");
+    const abil = (e.abilities || []).map((a) => {
+      const n = typeof a === "string" ? a : a.n, d = typeof a === "string" ? "" : a.d || "";
+      if (a.m && !V.spoilers.on) return `<div class="ability locked"><b>Classified ability</b><span>${esc(SP.locked)}</span></div>`;
+      return `<div class="ability"><b>${esc(n)}</b><span>${esc(d || "Ability")}</span></div>`;
+    }).join("");
+    return tiles + (abil ? `<h4>${esc(C.labels.abilities || "Abilities & skills")}</h4><div class="ability-list">${abil}</div>` : "") || "<p>No abilities on record.</p>";
+  }
+  function relationsTab(e) {
+    const rels = V.relations(e.id);
+    const hidden = V.relations(e.id, { includeHidden: true }).length - rels.length;
+    const hiddenNote = hidden ? `<p><span class="badge spoiler">${hidden} more hidden by spoiler mode</span></p>` : "";
+    if (!rels.length) return `<p>No recorded connections.</p>${hiddenNote}`;
+    const groups = {};
+    rels.forEach((r) => (groups[V.relLabel(r.t)] = groups[V.relLabel(r.t)] || []).push(r));
+    const order = (k) => { const i = V.relOrder.findIndex((t) => V.relLabel(t) === k); return i < 0 ? 99 : i; };
+    return Object.keys(groups).sort((a, b) => order(a) - order(b)).map((k) => `<div class="rel-group"><h4>${esc(k)}</h4><div class="rel-chips">${groups[k].map((r) => chip(r.id, r.label)).join("")}</div></div>`).join("")
+      + hiddenNote + `<div class="v-actions"><a class="btn sm" href="${V.url.network(e.id)}">Show on the relationship map →</a></div>`;
+  }
+  function historyTab(e) {
+    const events = (V.data.timeline || []).filter((t) => (t.ids || []).includes(e.id));
+    const ev = events.map((t) => (t.sp === "m" && !V.spoilers.on)
+      ? `<div class="form-step locked"><b>Classified event</b><span>A ${esc(SP.full.toLowerCase())}-only event. Turn on spoilers to read it.</span></div>`
+      : `<div class="form-step"><b>${esc(t.title)}</b><span><em>${esc(t.when)}:</em> ${esc(t.text)}</span></div>`).join("");
+    return `<h4>Chronicle</h4><p>${esc(e.bio || e.note || "")}</p>${e.bioM ? spoilerBlock(`<p style="margin:0">${esc(e.bioM)}</p>`) : ""}
+      ${ev ? `<h4>On the timeline</h4><div class="form-steps">${ev}</div><div class="v-actions"><a class="btn sm" href="timeline.html#${events[0].id}">Open the timeline →</a></div>` : ""}`;
+  }
+  function forms(e) {
+    return `<h4>${esc(C.labels.forms || "Evolution")}</h4><div class="form-steps">${(e.forms || []).map((f) => (f.m && !V.spoilers.on)
+      ? `<div class="form-step locked"><b>Classified</b><span>${esc(SP.locked)}. Turn on spoilers to see this stage.</span></div>`
+      : `<div class="form-step"><b>${esc(f.name)}</b><span>${esc(f.desc || "")}</span></div>`).join("")}</div>`;
+  }
+
+  /* -------------------------------------------------------------- render */
+  function render() {
+    sealed.clear();
+    const e = ent(state.id), { box } = root, col = V.colorOf(e);
+    box.style.setProperty("--c", col);
+    const i = state.list.indexOf(state.id);
+    const nav = state.list.length > 1 ? `<span class="v-nav"><button type="button" class="btn sm icon" data-step="-1" aria-label="Previous record">‹</button>
+      <span class="v-count">${i + 1} / ${state.list.length}</span><button type="button" class="btn sm icon" data-step="1" aria-label="Next record">›</button></span>` : "";
+    const head = `<div class="panel-head v-head"><span>${esc(C.labels.window || "Record")} · ${esc(S.typeLabel(e) || "Record")}</span>
+      <span class="v-head-tools">${nav}<button type="button" class="btn sm icon" data-close aria-label="Close">✕</button></span></div>`;
+    if (!V.visible(e)) {
+      box.innerHTML = `${head}<div class="v-art">${V.artHTML(e, { eager: true })}</div>
+        <div class="v-main"><div class="locked-note"><span class="badge spoiler">${esc(SP.locked)}</span>
+          <h2 class="v-name" id="v-title">Classified record</h2>
+          <p class="soft">This ${esc((C.types[e._type] || {}).label.toLowerCase())} only appears in the ${esc(SP.full.toLowerCase())}, beyond what the anime (${esc(SP.coverage)}) has covered.</p>
+          <div class="v-actions"><button type="button" class="btn primary" data-unlock>Reveal ${esc(SP.full.toLowerCase())} spoilers</button><button type="button" class="btn" data-close>Close</button></div></div></div>`;
+      box.setAttribute("aria-labelledby", "v-title");
+      return;
+    }
+    const tabs = tabsFor(e);
+    if (!tabs.some(([k]) => k === state.tab)) state.tab = "overview";
+    const r = e.rank ? V.rankOf(e) : null;
+    const status = S.status(e);
+    const badges = [
+      `<span class="badge" style="--c:${col}">${esc(S.typeLabel(e))}</span>`,
+      r && r.id ? `<span class="badge" style="--c:${r.color}">${esc(r.label)}</span>` : "",
+      status ? `<span class="badge" style="--c:${/Deceased|Dead|Killed|Exorcised|Destroyed|Absorbed/i.test(status) ? "var(--danger)" : "var(--ok)"}">${esc(status)}</span>` : "",
+      e.sp === "m" ? `<span class="badge spoiler">${esc(SP.badge)}</span>` : `<span class="badge anime">${esc(SP.safe)}</span>`,
+      e.canon === "check" ? '<span class="badge check">Needs check</span>' : "",
+      S.hasHidden(e) ? '<span class="badge spoiler">Has hidden spoilers</span>' : ""
+    ].join("");
+    const alt = S.alt(e).filter((a) => a !== S.name(e));
+    box.innerHTML = `${head}
+      <div class="v-art">${V.artHTML(e, { eager: true })}
+        ${r && r.short ? `<span class="rank lg v-rank" style="--c:${r.color}">${esc(r.short)}</span>` : ""}
+        <button type="button" class="btn sm v-art-hint panel" data-lightbox>⛶ Full screen</button></div>
+      <div class="v-main">
+        <div class="v-top">
+          <h2 class="v-name" id="v-title">${esc(S.name(e))}${e.jp ? `<span class="v-jp" lang="ja">${esc(e.jp)}</span>` : ""}</h2>
+          ${alt.length ? `<p class="v-alt">Also known as ${alt.map(esc).join(" · ")}</p>` : ""}
+          <div class="v-badges">${badges}</div>
+        </div>
+        <div class="v-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === state.tab}">${esc(l)}</button>`).join("")}</div>
+        <div class="v-panel" role="tabpanel">${({ overview, powers, relations: relationsTab, history: historyTab, forms }[state.tab] || overview)(e)}</div>
+      </div>`;
+    box.setAttribute("aria-labelledby", "v-title");
+  }
+
+  /* ---------------------------------------------------------- open/close */
+  function setUrl(id) {
+    try {
+      const u = new URL(location.href);
+      if (id) u.searchParams.set("view", id); else u.searchParams.delete("view");
+      history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+    } catch (err) { /* file:// in some browsers: the URL update is cosmetic */ }
+  }
+  function open(id, { list, tab } = {}) {
+    const e = ent(id);
+    if (!e) { V.notify && V.notify(`No record "${id}".`, { title: "Record not found", kind: "error" }); return; }
+    if (list && list.length) state.list = list.includes(id) ? list : [id, ...list];
+    else if (!root) state.list = [id];
+    state.id = id; state.tab = tab || "overview";
+    if (!root) {
+      lastFocus = document.activeElement;
+      const scrim = document.createElement("div"); scrim.className = "viewer-scrim";
+      const box = document.createElement("div");
+      box.className = "viewer panel"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
+      document.body.append(scrim, box);
+      root = { scrim, box };
+      document.documentElement.style.overflow = "hidden";
+      scrim.addEventListener("click", close);
+      box.addEventListener("click", onClick);
+      box.addEventListener("keydown", trap);
+    }
+    render(); setUrl(id);
+    const c = root.box.querySelector("[data-close]");
+    if (c) c.focus({ preventScroll: true });
+    document.dispatchEvent(new CustomEvent("verse:view", { detail: { id } }));
+  }
+  function close() {
+    if (!root) return;
+    root.scrim.remove(); root.box.remove(); root = null;
+    document.documentElement.style.overflow = "";
+    setUrl(null);
+    if (lastFocus && lastFocus.isConnected && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+  }
+  function step(d) {
+    if (state.list.length < 2) return;
+    const i = state.list.indexOf(state.id);
+    open(state.list[(i + d + state.list.length) % state.list.length], { list: state.list, tab: state.tab });
+  }
+  function onClick(ev) {
+    const t = ev.target;
+    if (t.closest("[data-close]")) return close();
+    const s = t.closest("[data-step]"); if (s) return step(Number(s.dataset.step));
+    const tab = t.closest("[data-tab]");
+    if (tab) { state.tab = tab.dataset.tab; render(); const b = root.box.querySelector(`[data-tab="${state.tab}"]`); if (b) b.focus(); return; }
+    const o = t.closest("[data-open]");
+    if (o) { const id = o.dataset.open; return open(id, { list: state.list.includes(id) ? state.list : [...state.list, id] }); }
+    if (t.closest("[data-reveal]")) {
+      const blk = t.closest(".spoiler-block"), body = blk.querySelector(".sb-body");
+      body.innerHTML = sealed.get(blk.dataset.sealed) || ""; body.removeAttribute("aria-hidden");
+      blk.classList.add("revealed"); body.setAttribute("tabindex", "-1"); body.focus({ preventScroll: true });
+      return;
+    }
+    if (t.closest("[data-unlock]")) { V.spoilers.set(true); return; }
+    if (t.closest("[data-lightbox]") || t.closest(".v-art .art")) lightbox(state.id, { list: state.list });
+  }
+  function trap(ev) {
+    if (ev.key !== "Tab" || !root) return;
+    const f = [...root.box.querySelectorAll("button, a[href], input, [tabindex]:not([tabindex='-1'])")].filter((x) => x.offsetParent !== null);
+    if (!f.length) return;
+    if (ev.shiftKey && document.activeElement === f[0]) { ev.preventDefault(); f[f.length - 1].focus(); }
+    else if (!ev.shiftKey && document.activeElement === f[f.length - 1]) { ev.preventDefault(); f[0].focus(); }
+  }
+  document.addEventListener("keydown", (ev) => {
+    if (lb) {
+      if (ev.key === "Escape") { ev.preventDefault(); closeLightbox(); }
+      else if (ev.key === "ArrowRight") lbStep(1);
+      else if (ev.key === "ArrowLeft") lbStep(-1);
+      return;
+    }
+    if (!root) return;
+    if (ev.key === "Escape") { ev.preventDefault(); close(); }
+    else if (ev.target.closest("input, select, textarea")) return;
+    else if (ev.key === "ArrowRight") step(1);
+    else if (ev.key === "ArrowLeft") step(-1);
+  });
+  V.spoilers.onChange(() => { if (root) render(); if (lb) renderLightbox(); });
+
+  /* ------------------------------------------------------------ lightbox */
+  let lb = null;
+  function lightbox(id, { list } = {}) {
+    if (!lb) {
+      const el = document.createElement("div");
+      el.className = "lightbox"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Full-screen artwork");
+      document.body.appendChild(el);
+      el.addEventListener("click", (ev) => {
+        if (ev.target.closest("[data-lb-close]")) return closeLightbox();
+        const s = ev.target.closest("[data-lb-step]"); if (s) return lbStep(Number(s.dataset.lbStep));
+        if (ev.target.closest("[data-lb-profile]")) { const i = lb.id, l = lb.list; closeLightbox(); return open(i, { list: l }); }
+        const stage = ev.target.closest(".lb-stage");
+        if (stage) {
+          const r = stage.getBoundingClientRect();
+          stage.style.transformOrigin = `${((ev.clientX - r.left) / r.width) * 100}% ${((ev.clientY - r.top) / r.height) * 100}%`;
+          el.classList.toggle("zoomed"); stage.style.transform = el.classList.contains("zoomed") ? "scale(1.7)" : "";
+          return;
+        }
+        if (ev.target === el) closeLightbox();
+      });
+      lb = { el };
+      document.documentElement.style.overflow = "hidden";
+    }
+    lb.id = id; lb.list = list && list.length ? list : [id];
+    renderLightbox();
+  }
+  function renderLightbox() {
+    const e = ent(lb.id), col = V.colorOf(e), many = lb.list.length > 1;
+    lb.el.classList.remove("zoomed");
+    lb.el.style.setProperty("--c", col);
+    lb.el.innerHTML = `
+      <div class="lb-tools"><button type="button" class="btn sm panel" data-lb-profile>Profile</button><button type="button" class="btn sm icon panel" data-lb-close aria-label="Close full screen">✕</button></div>
+      ${many ? `<button type="button" class="btn icon panel lb-prev" data-lb-step="-1" aria-label="Previous">‹</button><button type="button" class="btn icon panel lb-next" data-lb-step="1" aria-label="Next">›</button>` : ""}
+      <div class="lb-stage"><div class="lb-aura"></div>${V.artHTML(e, { eager: true })}
+        <div class="lb-cap"><div><h2>${esc(S.name(e))}</h2><p>${esc(S.subtitle(e))}</p></div>
+          <span class="badge" style="--c:${col}">${V.visible(e) && V.media.art(e) ? "Artwork" : "Generated sigil · add art in assets/"}</span></div></div>`;
+    lb.el.querySelector("[data-lb-close]").focus({ preventScroll: true });
+  }
+  function lbStep(d) {
+    if (!lb || lb.list.length < 2) return;
+    const i = lb.list.indexOf(lb.id);
+    lb.id = lb.list[(i + d + lb.list.length) % lb.list.length];
+    renderLightbox();
+  }
+  function closeLightbox() {
+    if (!lb) return;
+    lb.el.remove(); lb = null;
+    if (!root) document.documentElement.style.overflow = "";
+    else { const b = root.box.querySelector("[data-lightbox]"); if (b) b.focus({ preventScroll: true }); }
+  }
+
+  V.viewer = { open, close, lightbox, isOpen: () => !!root || !!lb };
+})();

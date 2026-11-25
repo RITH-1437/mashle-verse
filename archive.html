@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archive | Mashle Verse</title>
+<meta name="description" content="Search, filter and sort every Mashle character, Easton student, villain, creature and organization.">
+<meta name="theme-color" content="#0b0a10">
+<link rel="icon" href="assets/cover/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/engine.css">
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body data-page="archive">
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<main id="main">
+  <section class="page-head"><div class="wrap">
+    <p class="kicker" id="tab-kicker">Archive</p>
+    <h1 class="section-title" id="tab-title">Archive</h1>
+    <p class="lead" id="tab-sub"></p>
+  </div></section>
+  <section class="section" style="padding-top:28px"><div class="wrap">
+    <div class="tabs" id="tabs" role="tablist" aria-label="Collections"></div>
+    <div class="filters panel">
+      <div class="facet"><label class="label" for="q">Search this collection</label>
+        <div class="field"><span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><input class="input" id="q" type="search" autocomplete="off" placeholder="Name, house, magic…"></div></div>
+      <div class="facet"><label class="label" for="sort">Sort by</label><select class="select" id="sort"></select></div>
+      <div class="facet"><span class="label">Content</span><div class="chip-row" id="content-chips">
+        <button type="button" class="chip active" data-content="all">All</button>
+        <button type="button" class="chip" data-content="anime">Anime</button>
+        <button type="button" class="chip" data-content="source">Manga only</button></div></div>
+      <div class="f-facets" id="facets"></div>
+    </div>
+    <div class="result-bar"><span id="count" aria-live="polite"></span><span class="soft">Tip: ← → change page · click a card for its profile</span></div>
+    <div class="grid-cards" id="grid" aria-busy="true"><div class="state loading"><span class="loader"></span><p>Loading records…</p></div></div>
+    <div id="empty" hidden></div>
+    <nav class="pager" id="pager" aria-label="Pages"></nav>
+  </div></section>
+</main>
+<footer class="site-foot"><div class="wrap">
+  <a href="https://rith-1437.github.io/anime-verse/">← Anime Verse</a>
+  <span>Anime-safe by default (Seasons 1 and 2). Turn on manga spoilers for everything after the selection exam.</span>
+</div></footer>
+<noscript><p class="wrap" style="padding:20px 0">This encyclopedia needs JavaScript to load its records.</p></noscript>
+<script src="js/config.js"></script>
+<script src="js/data/characters.js"></script>
+<script src="js/data/world.js"></script>
+<script src="js/media-index.js"></script>
+<script src="js/engine/core.js"></script>
+<script src="js/engine/shell.js"></script>
+<script src="js/engine/viewer.js"></script>
+<script src="js/engine/archive.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+/* ==========================================================================
+   VERSE ENGINE: side-by-side comparison (compare.html)
+   config.compare: { type, filter, rows: [[label, fn]], ladder }.
+   No invented power numbers: it compares recorded facts (rank, magic,
+   marks, affiliation, abilities, connections) and shows each record's
+   position on the official ranking ladder. ?a=<id>&b=<id> is shareable.
+   ========================================================================== */
+(() => {
+  "use strict";
+  const V = window.V;
+  if (!V || !V.ready || document.body.dataset.page !== "compare") return;
+  const C = V.config, K = C.compare;
+  const { $, esc } = V.util;
+  const pool = () => V.ofType(K.type).filter((e) => V.visible(e) && (!K.filter || K.filter(e)))
+    .sort((a, b) => V.rankOf(b).n - V.rankOf(a).n || V.show.name(a).localeCompare(V.show.name(b)));
+  const params = new URLSearchParams(location.search);
+  const state = { a: params.get("a") || K.defaults[0], b: params.get("b") || K.defaults[1] };
+
+  function selects() {
+    const opts = (cur) => pool().map((e) => `<option value="${e.id}" ${e.id === cur ? "selected" : ""}>${esc(V.show.name(e))}</option>`).join("");
+    ["a", "b"].forEach((k) => {
+      if (!pool().some((e) => e.id === state[k])) state[k] = (pool()[k === "a" ? 0 : 1] || {}).id;
+      $(`#pick-${k}`).innerHTML = opts(state[k]);
+    });
+  }
+  function side(e, other) {
+    const r = V.rankOf(e), ladder = K.ladder.filter((x) => V.rank(x).id);
+    const pos = ladder.indexOf(r.id);
+    return `<div class="cmp-card panel" style="--c:${V.colorOf(e)}">
+      <div class="cmp-art">${V.artHTML(e, { eager: true })}</div>
+      <h2>${esc(V.show.name(e))}</h2><p class="soft">${esc(V.show.subtitle(e))}</p>
+      <div class="ladder" role="img" aria-label="Standing: ${esc(r.label || "Not ranked")}">${ladder.map((id, i) => `<span class="${i <= pos ? "on" : ""}${id === r.id ? " here" : ""}" style="--c:${V.rank(id).color}" title="${esc(V.rank(id).label)}"></span>`).join("")}</div>
+      <p class="ladder-label">${esc(r.label || "Not ranked")}</p>
+      <button type="button" class="btn sm" data-open="${e.id}">Full profile</button></div>`;
+  }
+  function render() {
+    const a = V.get(state.a), b = V.get(state.b);
+    if (!a || !b) { $("#cmp").innerHTML = V.stateHTML("empty", "Pick two records", "Choose who to compare above."); return; }
+    const shared = V.relations(a.id).filter((r) => V.relations(b.id).some((s) => s.id === r.id)).map((r) => V.get(r.id));
+    const direct = V.relations(a.id).filter((r) => r.id === b.id);
+    $("#cmp").innerHTML = `<div class="cmp-sides">${side(a, b)}<div class="cmp-vs" aria-hidden="true">VS</div>${side(b, a)}</div>
+      <div class="cmp-table panel"><table><thead><tr><th scope="col">${esc(V.show.name(a))}</th><th scope="col">Record</th><th scope="col">${esc(V.show.name(b))}</th></tr></thead><tbody>
+      ${K.rows.map(([label, fn]) => `<tr><td>${fn(a, V.h) || '<span class="soft">Not stated</span>'}</td><th scope="row">${esc(label)}</th><td>${fn(b, V.h) || '<span class="soft">Not stated</span>'}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="cmp-links panel"><h3>How they connect</h3>
+        ${direct.length ? `<p>${direct.map((r) => `<span class="badge" style="--c:var(--accent)">${esc(V.relLabel(r.t))}: ${esc(r.label || "")}</span>`).join(" ")}</p>` : '<p class="soft">No direct link on record.</p>'}
+        ${shared.length ? `<p class="label">Shared connections</p><div class="rel-chips">${shared.map((e) => `<button type="button" class="rel-chip" data-open="${e.id}" style="--c:${V.colorOf(e)}">${V.artHTML(e)}<span>${esc(V.show.name(e))}</span></button>`).join("")}</div>` : ""}
+        <p class="note-check">${esc(K.note)}</p></div>`;
+    try { const u = new URL(location.href); u.searchParams.set("a", a.id); u.searchParams.set("b", b.id); history.replaceState(null, "", u.pathname + u.search); } catch (err) { /* cosmetic */ }
+  }
+  document.addEventListener("change", (e) => { const m = e.target.id.match(/^pick-(a|b)$/); if (m) { state[m[1]] = e.target.value; render(); } });
+  $("#swap").addEventListener("click", () => { [state.a, state.b] = [state.b, state.a]; selects(); render(); });
+  V.spoilers.onChange(() => { selects(); render(); });
+  selects(); render();
+})();

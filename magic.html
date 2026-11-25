@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic | Mashle Verse</title>
+<meta name="description" content="Explore every magic in Mashle by classification and user.">
+<meta name="theme-color" content="#0b0a10">
+<link rel="icon" href="assets/cover/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/engine.css">
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body data-page="explorer" data-collection="magic" data-nav="explorer-magic">
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<main id="main">
+  <section class="page-head"><div class="wrap">
+    <p class="kicker">Magic classification</p>
+    <h1 class="section-title">Magic <em>abilities</em></h1>
+    <p class="lead">Every magic on record, sorted by classification. Pick one to see who uses it.</p>
+  </div></section>
+  <section class="section" style="padding-top:28px"><div class="wrap">
+    <div class="x-intro" id="x-intro"></div>
+    <div class="x-tools">
+      <div class="field"><span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><input class="input" id="x-q" type="search" autocomplete="off" placeholder="Magic or user…" aria-label="Search"></div>
+      <div class="chip-row" id="x-chips" aria-label="Filter"></div>
+      <span class="soft" id="x-count" aria-live="polite"></span>
+    </div>
+    <div class="x-layout">
+      <div><div class="x-grid" id="x-grid"><div class="state loading"><span class="loader"></span><p>Loading records…</p></div></div><div id="x-empty" hidden></div></div>
+      <aside class="x-detail panel" id="x-detail" aria-live="polite"></aside>
+    </div>
+  </div></section>
+</main>
+<footer class="site-foot"><div class="wrap">
+  <a href="https://rith-1437.github.io/anime-verse/">← Anime Verse</a>
+  <span>Anime-safe by default (Seasons 1 and 2). Turn on manga spoilers for everything after the selection exam.</span>
+</div></footer>
+<noscript><p class="wrap" style="padding:20px 0">This encyclopedia needs JavaScript to load its records.</p></noscript>
+<script src="js/config.js"></script>
+<script src="js/data/characters.js"></script>
+<script src="js/data/world.js"></script>
+<script src="js/media-index.js"></script>
+<script src="js/engine/core.js"></script>
+<script src="js/engine/shell.js"></script>
+<script src="js/engine/viewer.js"></script>
+<script src="js/engine/explorer.js"></script>
+</body>
+</html>
