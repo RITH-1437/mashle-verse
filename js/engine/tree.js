@@ -1,6 +1,8 @@
 /* ==========================================================================
    VERSE ENGINE: family / clan trees (tree.html)
-   config.tree.groups: [{ id, name, note, color, members: [ids] }].
+   config.tree.groups: [{ id, name, note, color, members: [ids], membersM }].
+   membersM: members only placed in the tree when spoilers are on (someone
+   whose mere presence in a family would be a spoiler).
    Generations come from `parents` (and `parentsM` when spoilers are on);
    spouses from links of type "spouse". Each group is drawn as an SVG with
    elbow edges; nodes open the viewer. Sealed members show as locked nodes.
@@ -14,7 +16,7 @@
   const NW = 150, NH = 64, GX = 26, GY = 70;
 
   function layout(group) {
-    const ids = group.members.filter((id) => V.get(id));
+    const ids = [...group.members, ...(V.spoilers.on ? group.membersM || [] : [])].filter((id) => V.get(id));
     const par = (id) => V.refs(V.get(id), "parents").filter((p) => ids.includes(p));
     const depth = {};
     const d = (id, seen = new Set()) => {
@@ -49,7 +51,7 @@
     const e = V.get(id), shown = V.visible(e), col = V.colorOf(e);
     const name = shown ? V.show.name(e) : SP.locked;
     const sub = shown ? (V.show.status(e) || V.show.subtitle(e)) : "Turn on spoilers";
-    return `<g class="t-node${shown ? "" : " locked"}" data-open="${esc(id)}" tabindex="0" role="button" aria-label="${esc(name)}" transform="translate(${p.x},${p.y})" style="--c:${col}">
+    return `<g class="t-node${shown ? "" : " locked"}" data-open="${esc(V.pub(e))}" tabindex="0" role="button" aria-label="${esc(name)}" transform="translate(${p.x},${p.y})" style="--c:${col}">
       <rect width="${NW}" height="${NH}" rx="10"/><text class="t-name" x="12" y="26">${esc(name.length > 18 ? name.slice(0, 17) + "…" : name)}</text>
       <text class="t-sub" x="12" y="46">${esc(String(sub).length > 22 ? String(sub).slice(0, 21) + "…" : sub)}</text></g>`;
   }

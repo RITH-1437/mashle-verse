@@ -30,7 +30,7 @@
   }
   function tile(e, i) {
     const locked = !V.visible(e), col = V.colorOf(e);
-    return `<button type="button" class="x-tile${locked ? " locked" : ""}${state.sel === e.id ? " active" : ""}" data-x="${e.id}" style="--c:${col};--i:${i}" aria-pressed="${state.sel === e.id}">
+    return `<button type="button" class="x-tile${locked ? " locked" : ""}${state.sel === e.id ? " active" : ""}" data-x="${esc(V.pub(e))}" style="--c:${col};--i:${i}" aria-pressed="${state.sel === e.id}">
       ${V.artHTML(e)}<span class="x-veil"></span>
       <span class="x-copy"><span class="kicker">${esc(locked ? SP.locked : X.tag(e))}</span><span class="x-name">${esc(V.show.name(e))}</span>
       <span class="x-sub">${esc(locked ? "Turn on spoilers to see this record" : V.show.subtitle(e))}</span></span></button>`;
@@ -48,7 +48,7 @@
       <p class="kicker">${esc(X.tag(e))}</p><h2 class="xd-name">${esc(V.show.name(e))}${e.jp ? ` <span class="v-jp" lang="ja">${esc(e.jp)}</span>` : ""}</h2>
       ${X.detail(e, V.h)}
       ${e.bioM ? V.spoilerBlock(`<p style="margin:0">${esc(e.bioM)}</p>`) : ""}
-      <div class="v-actions"><button type="button" class="btn primary" data-full="${e.id}">Full profile</button><a class="btn" href="${V.url.network(e.id)}">On the map</a></div>`;
+      <div class="v-actions"><button type="button" class="btn primary" data-full="${e.id}">Full profile</button>${!V.onMap || V.onMap(e) ? `<a class="btn" href="${V.url.network(e.id)}">On the map</a>` : ""}</div>`;
   }
   function render() {
     const items = list();
@@ -61,10 +61,12 @@
     detail();
   }
   function select(id, { scroll = false } = {}) {
-    state.sel = id;
+    const e = V.get(id);
+    if (!e) return;
+    state.sel = e.id;
     document.querySelectorAll("#x-grid [data-x]").forEach((b) => { const on = b.dataset.x === id; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
     detail();
-    try { history.replaceState(history.state, "", location.pathname + location.search + "#" + id); } catch (err) { /* cosmetic */ }
+    try { history.replaceState(history.state, "", location.pathname + location.search + "#" + V.pub(e)); } catch (err) { /* cosmetic */ }
     if (scroll && matchMedia("(max-width: 980px)").matches) $("#x-detail").scrollIntoView({ behavior: V.util.reducedMotion() ? "auto" : "smooth", block: "start" });
   }
 
@@ -79,6 +81,6 @@
   });
   V.spoilers.onChange(() => { chips(); render(); });
   const h = decodeURIComponent(location.hash.slice(1));
-  if (h && V.get(h)) state.sel = h;
+  if (h && V.get(h)) state.sel = V.get(h).id;
   chips(); render();
 })();

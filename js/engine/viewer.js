@@ -53,6 +53,8 @@
   };
   V.spoilerBlock = spoilerBlock;
   const row = (k, v) => (v ? `<div class="k">${esc(k)}</div><div>${v}</div>` : "");
+  /* only records the relationship page can centre get a map link */
+  V.onMap = (e) => !!e && (!C.network || !C.network.types || C.network.types.includes(e._type));
 
   /* records of `type` that reference e through `field` (e.g. techniques used) */
   const usedBy = (e) => (C.refs || []).filter((R) => R.power).flatMap((R) =>
@@ -103,15 +105,16 @@
     rels.forEach((r) => (groups[V.relLabel(r.t)] = groups[V.relLabel(r.t)] || []).push(r));
     const order = (k) => { const i = V.relOrder.findIndex((t) => V.relLabel(t) === k); return i < 0 ? 99 : i; };
     return Object.keys(groups).sort((a, b) => order(a) - order(b)).map((k) => `<div class="rel-group"><h4>${esc(k)}</h4><div class="rel-chips">${groups[k].map((r) => chip(r.id, r.label)).join("")}</div></div>`).join("")
-      + hiddenNote + `<div class="v-actions"><a class="btn sm" href="${V.url.network(e.id)}">Show on the relationship map →</a></div>`;
+      + hiddenNote + (V.onMap(e) ? `<div class="v-actions"><a class="btn sm" href="${V.url.network(e.id)}">Show on the relationship map →</a></div>` : "");
   }
   function historyTab(e) {
     const events = (V.data.timeline || []).filter((t) => (t.ids || []).includes(e.id));
+    const firstSeen = events.find((t) => t.sp !== "m" || V.spoilers.on);
     const ev = events.map((t) => (t.sp === "m" && !V.spoilers.on)
       ? `<div class="form-step locked"><b>Classified event</b><span>A ${esc(SP.full.toLowerCase())}-only event. Turn on spoilers to read it.</span></div>`
       : `<div class="form-step"><b>${esc(t.title)}</b><span><em>${esc(t.when)}:</em> ${esc(t.text)}</span></div>`).join("");
     return `<h4>Chronicle</h4><p>${esc(e.bio || e.note || "")}</p>${e.bioM ? spoilerBlock(`<p style="margin:0">${esc(e.bioM)}</p>`) : ""}
-      ${ev ? `<h4>On the timeline</h4><div class="form-steps">${ev}</div><div class="v-actions"><a class="btn sm" href="timeline.html#${events[0].id}">Open the timeline →</a></div>` : ""}`;
+      ${ev ? `<h4>On the timeline</h4><div class="form-steps">${ev}</div><div class="v-actions"><a class="btn sm" href="${V.url.timeline(firstSeen && firstSeen.id)}">Open the timeline →</a></div>` : ""}`;
   }
   function forms(e) {
     return `<h4>${esc(C.labels.forms || "Evolution")}</h4><div class="form-steps">${(e.forms || []).map((f) => (f.m && !V.spoilers.on)
@@ -145,7 +148,7 @@
     const badges = [
       `<span class="badge" style="--c:${col}">${esc(S.typeLabel(e))}</span>`,
       r && r.id ? `<span class="badge" style="--c:${r.color}">${esc(r.label)}</span>` : "",
-      status ? `<span class="badge" style="--c:${/Deceased|Dead|Killed|Exorcised|Destroyed|Absorbed/i.test(status) ? "var(--danger)" : "var(--ok)"}">${esc(status)}</span>` : "",
+      status ? `<span class="badge" style="--c:${/Deceased|Dead|Killed|Exorcised|Destroyed|Absorbed|Defeated/i.test(status) ? "var(--danger)" : /Unknown|Sealed|Missing|Released/i.test(status) ? "var(--warn)" : "var(--ok)"}">${esc(status)}</span>` : "",
       e.sp === "m" ? `<span class="badge spoiler">${esc(SP.badge)}</span>` : `<span class="badge anime">${esc(SP.safe)}</span>`,
       e.canon === "check" ? '<span class="badge check">Needs check</span>' : "",
       S.hasHidden(e) ? '<span class="badge spoiler">Has hidden spoilers</span>' : ""
@@ -161,8 +164,8 @@
           ${alt.length ? `<p class="v-alt">Also known as ${alt.map(esc).join(" · ")}</p>` : ""}
           <div class="v-badges">${badges}</div>
         </div>
-        <div class="v-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === state.tab}">${esc(l)}</button>`).join("")}</div>
-        <div class="v-panel" role="tabpanel">${({ overview, powers, relations: relationsTab, history: historyTab, forms }[state.tab] || overview)(e)}</div>
+        <div class="v-tabs" role="tablist" aria-label="Profile sections">${tabs.map(([k, l]) => `<button type="button" role="tab" id="v-tab-${k}" aria-controls="v-panel" data-tab="${k}" aria-selected="${k === state.tab}" tabindex="${k === state.tab ? 0 : -1}">${esc(l)}</button>`).join("")}</div>
+        <div class="v-panel" id="v-panel" role="tabpanel" aria-labelledby="v-tab-${state.tab}" tabindex="0">${({ overview, powers, relations: relationsTab, history: historyTab, forms }[state.tab] || overview)(e)}</div>
       </div>`;
     box.setAttribute("aria-labelledby", "v-title");
   }
@@ -171,13 +174,16 @@
   function setUrl(id) {
     try {
       const u = new URL(location.href);
-      if (id) u.searchParams.set("view", id); else u.searchParams.delete("view");
+      if (id) u.searchParams.set("view", V.pub(ent(id))); else u.searchParams.delete("view");
       history.replaceState(history.state, "", u.pathname + u.search + u.hash);
     } catch (err) { /* file:// in some browsers: the URL update is cosmetic */ }
   }
   function open(id, { list, tab } = {}) {
     const e = ent(id);
     if (!e) { V.notify && V.notify(`No record "${id}".`, { title: "Record not found", kind: "error" }); return; }
+    /* lists and ids may hold public tokens for sealed records: work with real ids */
+    id = e.id;
+    if (list) list = list.map((x) => (ent(x) || {}).id).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
     if (list && list.length) state.list = list.includes(id) ? list : [id, ...list];
     else if (!root) state.list = [id];
     state.id = id; state.tab = tab || "overview";
@@ -229,14 +235,19 @@
   }
   function trap(ev) {
     if (ev.key !== "Tab" || !root) return;
-    const f = [...root.box.querySelectorAll("button, a[href], input, [tabindex]:not([tabindex='-1'])")].filter((x) => x.offsetParent !== null);
+    const f = [...root.box.querySelectorAll("button:not([tabindex='-1']), a[href], input, [tabindex]:not([tabindex='-1'])")].filter((x) => x.offsetParent !== null);
     if (!f.length) return;
     if (ev.shiftKey && document.activeElement === f[0]) { ev.preventDefault(); f[f.length - 1].focus(); }
     else if (!ev.shiftKey && document.activeElement === f[f.length - 1]) { ev.preventDefault(); f[0].focus(); }
   }
   document.addEventListener("keydown", (ev) => {
     if (lb) {
-      if (ev.key === "Escape") { ev.preventDefault(); closeLightbox(); }
+      if (ev.key === "Tab") {
+        const f = [...lb.el.querySelectorAll("button")];
+        const i = f.indexOf(document.activeElement);
+        ev.preventDefault(); (f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length] || f[0]).focus();
+      }
+      else if (ev.key === "Escape") { ev.preventDefault(); closeLightbox(); }
       else if (ev.key === "ArrowRight") lbStep(1);
       else if (ev.key === "ArrowLeft") lbStep(-1);
       return;
@@ -244,6 +255,12 @@
     if (!root) return;
     if (ev.key === "Escape") { ev.preventDefault(); close(); }
     else if (ev.target.closest("input, select, textarea")) return;
+    else if (ev.target.closest(".v-tabs [role=tab]") && /^(ArrowRight|ArrowLeft|Home|End)$/.test(ev.key)) {
+      ev.preventDefault();
+      const keys = tabsFor(ent(state.id)).map(([k]) => k), i = keys.indexOf(state.tab);
+      state.tab = keys[ev.key === "Home" ? 0 : ev.key === "End" ? keys.length - 1 : (i + (ev.key === "ArrowRight" ? 1 : -1) + keys.length) % keys.length];
+      render(); const b = root.box.querySelector(`[data-tab="${state.tab}"]`); if (b) b.focus();
+    }
     else if (ev.key === "ArrowRight") step(1);
     else if (ev.key === "ArrowLeft") step(-1);
   });

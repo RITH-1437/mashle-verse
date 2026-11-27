@@ -23,7 +23,7 @@
   function stats() {
     $("#stats").innerHTML = H.stats.map(([label, fn, href]) => {
       const n = fn();
-      return `<a class="stat panel reveal" href="${href || "archive.html"}"><b data-count="${n}">0</b><span>${esc(label)}</span></a>`;
+      return `<a class="stat panel reveal" href="${V.href(href || "archive.html")}"><b data-count="${n}">0</b><span>${esc(label)}</span></a>`;
     }).join("");
     countUp($("#stats"));
   }
@@ -32,7 +32,7 @@
     $("#featured").innerHTML = list.map((e, i) => V.cardHTML(e, i)).join("") || V.stateHTML("empty", "Nothing featured yet", "Mark records with featured: true in js/data.");
   }
   function sections() {
-    $("#sections").innerHTML = H.sections.map((s, i) => `<a class="section-card panel reveal" href="${s.href}" style="--i:${i};--c:${s.color || "var(--accent)"}">
+    $("#sections").innerHTML = H.sections.map((s, i) => `<a class="section-card panel reveal" href="${V.href(s.href)}" style="--i:${i};--c:${s.color || "var(--accent)"}">
       <span class="sc-ico" aria-hidden="true">${s.icon || "◆"}</span>
       <span class="sc-title">${esc(s.title)}</span><span class="sc-text">${esc(s.text)}</span>
       ${s.count ? `<span class="sc-count">${esc(s.count())}</span>` : ""}<span class="sc-go" aria-hidden="true">→</span></a>`).join("");
@@ -42,7 +42,7 @@
     if (!S || !$("#spotlight")) return;
     const list = S.ids().map(V.get).filter((e) => e && V.visible(e)).slice(0, 6);
     $("#spotlight").innerHTML = `<div class="spot-copy reveal"><p class="kicker">${esc(S.kicker)}</p><h2 class="section-title">${esc(S.title)}</h2>
-      <p class="lead">${esc(S.text)}</p><a class="btn primary" href="${S.href}">${esc(S.cta)} →</a></div>
+      <p class="lead">${esc(S.text)}</p><a class="btn primary" href="${V.href(S.href)}">${esc(S.cta)} →</a></div>
       <div class="spot-grid grid-cards">${list.map((e, i) => V.cardHTML(e, i)).join("")}</div>`;
   }
   function arcs() {
@@ -52,7 +52,7 @@
     el.innerHTML = list.map((a, i) => {
       const n = (V.data.timeline || []).filter((t) => t.arc === a.id).length;
       const locked = a.sp === "m" && !V.spoilers.on;
-      return `<a class="arc-step${locked ? " locked" : ""}" href="timeline.html#arc-${a.id}" style="--i:${i}">
+      return `<a class="arc-step${locked ? " locked" : ""}" href="${V.url.timeline(locked ? "arc-sealed-" + i : "arc-" + a.id)}" style="--i:${i}">
         <span class="arc-dot"></span><b>${esc(locked ? SP.locked : a.label)}</b><small>${esc(a.short || "")}${n ? ` · ${n} event${n > 1 ? "s" : ""}` : ""}</small></a>`;
     }).join("");
   }

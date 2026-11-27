@@ -12,27 +12,30 @@
   const { $, esc } = V.util;
   const state = { kinds: new Set(Object.keys(KINDS)), revealed: new Set() };
   const sealed = (t) => t.sp === "m" && !V.spoilers.on && !state.revealed.has(t.id);
+  /* sealed events and arcs get opaque anchors: their ids would spoil them */
+  const evKey = (t) => (sealed(t) ? "sealed-" + V.util.hash("ev:" + t.id).toString(36) : t.id);
+  const arcKey = (a, i) => (a.sp === "m" && !V.spoilers.on ? "arc-sealed-" + i : "arc-" + a.id);
 
   function renderFilters() {
     $("#kinds").innerHTML = Object.entries(KINDS).map(([k, d]) => `<button type="button" class="chip${state.kinds.has(k) ? " active" : ""}" data-kind="${k}" style="--c:${d.color}" aria-pressed="${state.kinds.has(k)}">${esc(d.label)}</button>`).join("");
-    $("#arc-jump").innerHTML = (V.data.arcs || []).map((a) => `<a href="#arc-${a.id}" class="chip${a.sp === "m" && !V.spoilers.on ? " locked" : ""}">${esc(a.sp === "m" && !V.spoilers.on ? SP.locked : a.label)}</a>`).join("");
+    $("#arc-jump").innerHTML = (V.data.arcs || []).map((a, i) => `<a href="#${arcKey(a, i)}" class="chip${a.sp === "m" && !V.spoilers.on ? " locked" : ""}">${esc(a.sp === "m" && !V.spoilers.on ? SP.locked : a.label)}</a>`).join("");
   }
   function render() {
     const events = V.data.timeline || [];
-    const html = (V.data.arcs || []).map((a) => {
+    const html = (V.data.arcs || []).map((a, ai) => {
       const list = events.filter((t) => t.arc === a.id && state.kinds.has(t.kind));
       if (!list.length) return "";
       const arcLocked = a.sp === "m" && !V.spoilers.on;
-      return `<section class="tl-arc reveal" id="arc-${a.id}">
+      return `<section class="tl-arc reveal" id="${arcKey(a, ai)}">
         <header class="tl-arc-head"><span class="kicker">${esc(a.short || "")}</span><h2>${esc(arcLocked ? `${SP.locked} arc` : a.label)}</h2>${a.note && !arcLocked ? `<p>${esc(a.note)}</p>` : ""}</header>
         ${list.map((t) => {
           const d = KINDS[t.kind] || { label: t.kind, color: "var(--accent)" };
-          if (sealed(t)) return `<article class="tl-event locked" id="${t.id}" style="--c:${d.color}"><span class="tl-dot"></span><div class="tl-body panel">
+          if (sealed(t)) return `<article class="tl-event locked" id="${evKey(t)}" style="--c:${d.color}"><span class="tl-dot"></span><div class="tl-body panel">
             <div class="tl-meta"><span class="badge spoiler">${esc(SP.badge)}</span><span class="badge" style="--c:${d.color}">${esc(d.label)}</span></div>
             <h3>Classified event</h3><p class="soft">This happens beyond the anime (${esc(SP.coverage)}).</p>
-            <button type="button" class="btn sm" data-reveal="${t.id}">Reveal this event</button></div></article>`;
+            <button type="button" class="btn sm" data-reveal="${evKey(t)}">Reveal this event</button></div></article>`;
           const people = (t.ids || []).map(V.get).filter((e) => e && V.visible(e));
-          return `<article class="tl-event" id="${t.id}" style="--c:${d.color}"><span class="tl-dot"></span><div class="tl-body panel">
+          return `<article class="tl-event" id="${t.id}" style="--c:${d.color}"><span class="tl-dot"></span><div class="tl-body panel" tabindex="-1">
             <div class="tl-meta"><span class="tl-when">${esc(t.when)}</span><span class="badge" style="--c:${d.color}">${esc(d.label)}</span>${t.sp === "m" ? `<span class="badge spoiler">${esc(SP.badge)}</span>` : ""}</div>
             <h3>${esc(t.title)}</h3><p>${esc(t.text)}</p>
             ${people.length ? `<div class="rel-chips">${people.map((e) => `<button type="button" class="rel-chip" data-open="${e.id}" style="--c:${V.colorOf(e)}">${V.artHTML(e)}<span>${esc(V.show.name(e))}</span></button>`).join("")}</div>` : ""}
@@ -51,7 +54,14 @@
   });
   $("#timeline").addEventListener("click", (e) => {
     const r = e.target.closest("[data-reveal]");
-    if (r) { state.revealed.add(r.dataset.reveal); render(); const el = document.getElementById(r.dataset.reveal); if (el) { el.classList.add("in", "flash"); el.querySelector(".tl-body").focus && el.scrollIntoView({ block: "center" }); } return; }
+    if (r) {
+      const t = (V.data.timeline || []).find((x) => evKey(x) === r.dataset.reveal);
+      if (!t) return;
+      state.revealed.add(t.id); render();
+      const el = document.getElementById(t.id);
+      if (el) { el.classList.add("in", "flash"); el.scrollIntoView({ block: "center" }); el.querySelector(".tl-body").focus({ preventScroll: true }); }
+      return;
+    }
     if (e.target.closest("[data-all-kinds]")) { Object.keys(KINDS).forEach((x) => state.kinds.add(x)); renderFilters(); render(); }
     /* [data-open] chips are handled by the shell */
   });

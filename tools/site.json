@@ -1,13 +1,14 @@
 {
   "themeColor": "#0b0a10",
   "fonts": "https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap",
+  "pageDir": "html",
   "hub": "https://rith-1437.github.io/anime-verse/",
-  "footNote": "Anime-safe by default (Seasons 1 and 2). Turn on manga spoilers for everything after the selection exam.",
+  "footNote": "Anime-safe by default (Seasons 1 and 2, episodes 1-24). Turn on manga spoilers for everything after Season 2.",
   "data": [
     "characters.js",
     "world.js"
   ],
-  "hero": "<section class=\"hero\"><div class=\"wrap hero-grid\"><div class=\"hero-copy\"><p class=\"kicker\">The Easton encyclopedia</p><h1><span class=\"gold\">Mashle Verse</span><small>Magic and Muscles</small></h1><p class=\"lead\">Students, Divine Visionaries, magic and magic marks from the world of Mashle, where everyone has magic except one boy with very strong arms. Anime-safe by default, with manga spoilers sealed until you open them.</p><form class=\"hero-search\" id=\"hero-search\" role=\"search\"><div class=\"field\"><span class=\"ico\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg></span><input class=\"input\" type=\"search\" placeholder=\"Try Mash, Sword Cane, Adler…\" aria-label=\"Search the archive\"></div><button class=\"btn primary\" type=\"submit\">Search</button></form><div class=\"hero-ctas\"><a class=\"btn\" href=\"visionaries.html\">Divine Visionaries</a><a class=\"btn\" href=\"marks.html\">Magic Marks</a><a class=\"btn\" href=\"compare.html\">Compare</a></div><div class=\"stats\" id=\"stats\"></div></div><div class=\"hero-crest\" aria-hidden=\"true\"><svg viewBox=\"0 0 400 400\"><defs><radialGradient id=\"hc\" cx=\"50%\" cy=\"50%\" r=\"50%\"><stop offset=\"0\" stop-color=\"#f3d38a\" stop-opacity=\".55\"/><stop offset=\".55\" stop-color=\"#9b7bff\" stop-opacity=\".22\"/><stop offset=\"1\" stop-color=\"#0b0a10\" stop-opacity=\"0\"/></radialGradient><linearGradient id=\"hg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fff4d6\"/><stop offset=\"1\" stop-color=\"#b8893a\"/></linearGradient></defs><g class=\"ring\" fill=\"none\" stroke=\"#f3d38a\" stroke-opacity=\".55\"><circle cx=\"200\" cy=\"200\" r=\"170\" stroke-dasharray=\"1 9\" stroke-width=\"3\"/><circle cx=\"200\" cy=\"200\" r=\"150\"/><path d=\"M200 24l6 14-6 6-6-6zM200 376l6-14-6-6-6 6zM24 200l14 6 6-6-6-6zM376 200l-14 6-6-6 6-6z\" fill=\"#f3d38a\"/></g><g class=\"ring r2\" fill=\"none\" stroke=\"#9b7bff\" stroke-opacity=\".6\" stroke-width=\"1.5\"><rect x=\"95\" y=\"95\" width=\"210\" height=\"210\" transform=\"rotate(45 200 200)\"/><rect x=\"110\" y=\"110\" width=\"180\" height=\"180\"/></g><g class=\"float\"><path d=\"M200 112c-18 0-30 14-30 30 0 12 6 20 6 28h48c0-8 6-16 6-28 0-16-12-30-30-30z\" fill=\"url(#hg)\" opacity=\".95\"/><path d=\"M164 182h72l-8 22h-56z\" fill=\"#f3d38a\" opacity=\".75\"/><path d=\"M150 214c10 26 30 60 50 76 20-16 40-50 50-76\" fill=\"none\" stroke=\"url(#hg)\" stroke-width=\"6\" stroke-linecap=\"round\"/><path d=\"M188 248h24M192 270h16\" stroke=\"#9fc6ff\" stroke-width=\"4\" stroke-linecap=\"round\"/></g></svg></div></div></section>",
+  "hero": "<section class=\"hero\"><div class=\"wrap hero-grid\"><div class=\"hero-copy\"><p class=\"kicker\">The Easton encyclopedia</p><h1><span class=\"gold\">Mashle Verse</span><small>Magic and Muscles</small></h1><p class=\"lead\">Students, Divine Visionaries, magic and magic marks from the world of Mashle, where everyone has magic except one boy with very strong arms. Anime-safe by default, with manga spoilers sealed until you open them.</p><form class=\"hero-search\" id=\"hero-search\" role=\"search\"><div class=\"field\"><span class=\"ico\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg></span><input class=\"input\" type=\"search\" placeholder=\"Try Mash, Sword Cane, Adler…\" aria-label=\"Search the archive\"></div><button class=\"btn primary\" type=\"submit\">Search</button></form><div class=\"hero-ctas\"><a class=\"btn\" href=\"html/visionaries.html\">Divine Visionaries</a><a class=\"btn\" href=\"html/marks.html\">Magic Marks</a><a class=\"btn\" href=\"html/compare.html\">Compare</a></div><div class=\"stats\" id=\"stats\"></div></div><div class=\"hero-crest\" aria-hidden=\"true\"><svg viewBox=\"0 0 400 400\"><defs><radialGradient id=\"hc\" cx=\"50%\" cy=\"50%\" r=\"50%\"><stop offset=\"0\" stop-color=\"#f3d38a\" stop-opacity=\".55\"/><stop offset=\".55\" stop-color=\"#9b7bff\" stop-opacity=\".22\"/><stop offset=\"1\" stop-color=\"#0b0a10\" stop-opacity=\"0\"/></radialGradient><linearGradient id=\"hg\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fff4d6\"/><stop offset=\"1\" stop-color=\"#b8893a\"/></linearGradient></defs><g class=\"ring\" fill=\"none\" stroke=\"#f3d38a\" stroke-opacity=\".55\"><circle cx=\"200\" cy=\"200\" r=\"170\" stroke-dasharray=\"1 9\" stroke-width=\"3\"/><circle cx=\"200\" cy=\"200\" r=\"150\"/><path d=\"M200 24l6 14-6 6-6-6zM200 376l6-14-6-6-6 6zM24 200l14 6 6-6-6-6zM376 200l-14 6-6-6 6-6z\" fill=\"#f3d38a\"/></g><g class=\"ring r2\" fill=\"none\" stroke=\"#9b7bff\" stroke-opacity=\".6\" stroke-width=\"1.5\"><rect x=\"95\" y=\"95\" width=\"210\" height=\"210\" transform=\"rotate(45 200 200)\"/><rect x=\"110\" y=\"110\" width=\"180\" height=\"180\"/></g><g class=\"float\"><path d=\"M200 112c-18 0-30 14-30 30 0 12 6 20 6 28h48c0-8 6-16 6-28 0-16-12-30-30-30z\" fill=\"url(#hg)\" opacity=\".95\"/><path d=\"M164 182h72l-8 22h-56z\" fill=\"#f3d38a\" opacity=\".75\"/><path d=\"M150 214c10 26 30 60 50 76 20-16 40-50 50-76\" fill=\"none\" stroke=\"url(#hg)\" stroke-width=\"6\" stroke-linecap=\"round\"/><path d=\"M188 248h24M192 270h16\" stroke=\"#9fc6ff\" stroke-width=\"4\" stroke-linecap=\"round\"/></g></svg></div></div></section>",
   "pages": {
     "index.html": {
       "kind": "home",
@@ -21,7 +22,7 @@
     "archive.html": {
       "kind": "archive",
       "title": "Archive | Mashle Verse",
-      "desc": "Search, filter and sort every Mashle character, Easton student, villain, creature and organization.",
+      "desc": "Search, filter and sort every Mashle character, Easton student, Divine Visionary, villain, creature and organization.",
       "searchHint": "Name, house, magic…",
       "sourceChip": "Manga only"
     },
@@ -54,7 +55,7 @@
       "collection": "marks",
       "nav": "explorer-marks",
       "title": "Magic Marks | Mashle Verse",
-      "desc": "A gallery of confirmed magic marks in Mashle.",
+      "desc": "A gallery of confirmed magic marks in Mashle, from single-liners to the rare three-line mages.",
       "kicker": "Magic Mark gallery",
       "h1": "Magic <em>Marks</em>",
       "lead": "The lines on a mage's face that show their talent. Only marks confirmed in the story are shown.",
@@ -76,10 +77,10 @@
     "timeline.html": {
       "kind": "timeline",
       "title": "Story Timeline | Mashle Verse",
-      "desc": "The Mashle story in order, from the forest to the Divine Visionary Selection Exam.",
+      "desc": "The Mashle story in order, from the forest through the Divine Visionary Selection Exam and Innocent Zero's attack.",
       "kicker": "Chronology",
       "h1": "Story <em>Timeline</em>",
-      "lead": "From the forest to the selection exam. Manga events stay sealed until you reveal them."
+      "lead": "From the forest to Innocent Zero's attack on the selection exam. Manga events stay sealed until you reveal them."
     }
   }
 }

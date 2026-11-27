@@ -37,10 +37,10 @@
     nav.className = "nav";
     nav.innerHTML = `
       <div class="wrap nav-inner">
-        <a class="brand" href="index.html" aria-label="${esc(C.site.name)} home">${C.site.mark}
+        <a class="brand" href="${V.href("index.html")}" aria-label="${esc(C.site.name)} home">${C.site.mark}
           <span class="brand-text"><span class="bt-full">${esc(C.site.brand)}</span><span class="bt-short">${esc(C.site.short)}</span> <em>Verse</em></span></a>
         <nav class="nav-links" id="nav-links" aria-label="Main">
-          ${C.nav.map(([k, href, label]) => `<a href="${href}" data-key="${k}">${esc(label)}</a>`).join("")}
+          ${C.nav.map(([k, href, label]) => `<a href="${V.href(href)}" data-key="${k}">${esc(label)}</a>`).join("")}
         </nav>
         <div class="nav-tools">
           <button type="button" class="btn sm nav-search" id="open-search" aria-label="Search (Ctrl+K)">${ICON.search}<span class="lbl">Search</span><kbd>Ctrl K</kbd></button>
@@ -108,7 +108,7 @@
       if (e.sp === "m") tags.push(`<span class="badge spoiler">${esc(SP.badge)}</span>`);
       if (e.canon === "check") tags.push('<span class="badge check">Needs check</span>');
     }
-    return `<button type="button" class="card${locked ? " locked" : ""}" data-id="${esc(e.id)}" style="--c:${col};--i:${i}"
+    return `<button type="button" class="card${locked ? " locked" : ""}" data-id="${esc(V.pub(e))}" style="--c:${col};--i:${i}"
         aria-label="${esc(locked ? SP.locked + " entry" : S.name(e))}: open profile">
       ${V.artHTML(e)}
       ${locked ? `<span class="lock">${ICON.lock}${esc(SP.locked)}<br><small>Click to unlock</small></span>` : ""}
@@ -150,7 +150,7 @@
     box.innerHTML = `
       <div class="panel-head">Search the ${esc(C.site.brand)} archive</div>
       <div class="field"><span class="ico">${ICON.search}</span>
-        <input class="input" id="pal-q" type="search" autocomplete="off" spellcheck="false" placeholder="${esc(C.site.searchHint)}" aria-controls="pal-results"></div>
+        <input class="input" id="pal-q" type="search" role="combobox" aria-expanded="true" aria-autocomplete="list" autocomplete="off" spellcheck="false" placeholder="${esc(C.site.searchHint)}" aria-label="${esc(C.site.searchHint)}" aria-controls="pal-results"></div>
       <div class="palette-results" id="pal-results" role="listbox" aria-label="Results"></div>
       <div class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>`;
     document.body.append(scrim, box);
@@ -185,14 +185,26 @@
     pal.box.querySelectorAll("[data-pi]").forEach((b, i) => b.setAttribute("aria-selected", String(i === palSel)));
     const cur = pal.box.querySelector(`[data-pi="${palSel}"]`);
     if (cur) cur.scrollIntoView({ block: "nearest" });
+    activeDesc();
   }
   function choose(it) {
     if (!it) return;
     closePalette();
-    if (it.href) { location.href = it.href; return; }
+    if (it.href) { location.href = V.href(it.href); return; }
     if (V.viewer) V.viewer.open(it.id, { list: palItems.filter((x) => x.id).map((x) => x.id) });
   }
+  /* screen readers follow the highlighted option while focus stays in the field */
+  function activeDesc() {
+    const q = pal && $("#pal-q", pal.box), cur = pal && pal.box.querySelector(`[data-pi="${palSel}"]`);
+    if (!q) return;
+    if (cur) q.setAttribute("aria-activedescendant", cur.id); else q.removeAttribute("aria-activedescendant");
+  }
   function renderPalette(text) {
+    renderPaletteList(text);
+    pal.box.querySelectorAll("[data-pi]").forEach((b) => { b.id = "pal-opt-" + b.dataset.pi; b.tabIndex = -1; });
+    activeDesc();
+  }
+  function renderPaletteList(text) {
     const out = $("#pal-results", pal.box);
     if (!text.trim()) {
       palItems = C.quick.map(([href, name, sub]) => ({ href, name, sub }));
@@ -205,7 +217,7 @@
     const hiddenNote = hidden ? `<div class="palette-note">${hidden} more result${hidden > 1 ? "s are" : " is"} hidden as ${esc(SP.full.toLowerCase())} spoilers.<br>
       <button type="button" class="btn sm" data-unlock>Reveal spoilers</button></div>` : "";
     if (!palItems.length) {
-      out.innerHTML = (hidden ? "" : `<div class="palette-note">Nothing matches “${esc(text)}”. Try a name, grade, technique or group.</div>`) + hiddenNote;
+      out.innerHTML = (hidden ? "" : `<div class="palette-note">Nothing matches “${esc(text)}”. ${esc((C.site && C.site.searchEmpty) || "Try another name or keyword.")}</div>`) + hiddenNote;
       return;
     }
     out.innerHTML = palItems.map(({ e }, i) => `<button type="button" class="pr-item" role="option" data-pi="${i}" aria-selected="${i === palSel}" style="--c:${V.colorOf(e)}">

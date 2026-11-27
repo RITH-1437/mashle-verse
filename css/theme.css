@@ -52,3 +52,28 @@
 
 /* Cinzel runs wide: keep the nav on one line at desktop sizes */
 .nav-links a { padding: 8px 9px; font-size: 13px; letter-spacing: .3px; }
+
+/* ------------------------------------------------------- accessibility */
+/* Gold focus ring on cards and tiles reads better than violet on the
+   gold-tinted artwork. */
+.card:focus-visible, .x-tile:focus-visible, .rel-chip:focus-visible, .fr-go:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 3px; }
+/* Magic-mark figure: lines are decorative, the stat table carries the text. */
+.mark-figure i:nth-child(2) { height: 52px; }
+.mark-figure i:nth-child(3) { height: 60px; background: #f3d38a; box-shadow: 0 0 12px rgba(243, 211, 138, .7); }
+/* Respect reduced motion: stop the crest rings, floating emblem and every
+   decorative animation (the particle layer is already skipped by the engine). */
+@media (prefers-reduced-motion: reduce) {
+  .hero-crest .ring, .hero-crest .float { animation: none; }
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+/* Windows high-contrast: keep chips, badges and the mark lines visible. */
+@media (forced-colors: active) {
+  .mark-figure i { background: CanvasText; box-shadow: none; }
+  .badge, .chip { border: 1px solid CanvasText; }
+}
+
+/* Cinzel is wide: on small phones the brand was cut to "Mashle Ver…". */
+@media (max-width: 420px) {
+  .brand { gap: 7px; font-size: 14px; letter-spacing: .2px; }
+  .brand-mark { width: 28px; height: 28px; }
+}

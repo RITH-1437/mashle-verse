@@ -49,6 +49,21 @@
   V.util = util;
   const { esc, norm } = util;
 
+  /* ---------------------------------------------------------------- paths */
+  /* Pages may live in a sub-folder. <body data-root="../"> says how far the
+     current page is from the site root, and config.site.pagesDir ("html/")
+     where every page except index.html lives. V.href maps a site-root path
+     ("archive.html#tools", "assets/x.webp") to one that works from here.
+     Without either setting every path is returned unchanged. */
+  const ROOT = (document.body && document.body.dataset.root) || "";
+  const PAGES = (C.site && C.site.pagesDir) || "";
+  V.href = (p) => {
+    if (!p || /^(?:[a-z][a-z0-9+.-]*:|\/|#|\?|\.\.?\/)/i.test(p)) return p;
+    const m = String(p).match(/^([^?#]*)(.*)$/), file = m[1];
+    if (/^[^/]+\.html$/.test(file)) return ROOT + (file === "index.html" ? "" : PAGES) + file + m[2];
+    return ROOT + p;
+  };
+
   /* ------------------------------------------------------------- registry */
   V.types = C.types;
   const all = [], byId = new Map(), problems = [];
@@ -80,6 +95,12 @@
   V.isSpoiler = isSpoiler;
   V.visible = visible;
   V.linkVisible = (l) => l.sp !== "m" || V.spoilers.on;
+  /* Public id: a sealed record is addressed by an opaque token in the DOM
+     and in URLs, so its id (often the character's name) can't spoil it.
+     V.get accepts either form; V.pub picks the one to print. */
+  const token = (id) => "sealed-" + util.hash("sealed:" + id).toString(36);
+  all.forEach((e) => { const k = token(e.id); if (!byId.has(k)) byId.set(k, e); });
+  V.pub = (e) => (!e ? "" : visible(e) ? e.id : token(e.id));
 
   /* ---------------------------------------------------------------- ranks */
   const RANKS = C.ranks || [];
@@ -258,7 +279,7 @@
   };
   /* Artwork markup: real image when indexed, otherwise the sigil. */
   V.artHTML = (e, { cls = "", eager = false } = {}) => {
-    const src = visible(e) ? V.media.art(e) : null;
+    const src = visible(e) ? V.href(V.media.art(e)) : null;
     return `<span class="art ${cls}${src ? " has-img" : ""}" style="--c:${V.colorOf(e)}">${V.sigil(e)}${src
       ? `<img src="${esc(src)}" alt="" decoding="async" ${eager ? "" : 'loading="lazy"'} onload="this.parentNode.classList.add('img-ready')" onerror="this.remove()">` : ""}</span>`;
   };
@@ -282,7 +303,8 @@
 
   /* ------------------------------------------------------------------ urls */
   V.url = {
-    archive: (tab) => `archive.html#${tab}`,
-    network: (id) => `network.html${id ? "?focus=" + encodeURIComponent(id) : ""}`
+    archive: (tab) => V.href(`archive.html#${tab}`),
+    network: (id) => V.href(`network.html${id ? "?focus=" + encodeURIComponent(id) : ""}`),
+    timeline: (anchor) => V.href(`timeline.html${anchor ? "#" + anchor : ""}`)
   };
 })();

@@ -2,7 +2,12 @@
 
 Every page shares one skeleton (head, nav slot, scripts) and one of the
 engine's page layouts: home, archive, roster, explorer, tree, compare,
-network, timeline. Edit tools/site.json and rerun:
+network, timeline. index.html is written to the site root; every other page
+goes into the folder named by site.json "pageDir" (html/), with ../ in front
+of its css/, js/ and assets/ references and data-root="../" on <body> so the
+engine and js/config.js can build links that work from either place.
+Stale copies of those pages left in the root are removed. Edit
+tools/site.json and rerun:
 
     python tools/build_pages.py
 """
@@ -15,7 +20,26 @@ SITE = json.loads((ROOT / "tools" / "site.json").read_text(encoding="utf-8"))
 E = html.escape
 
 
-def head(page, title, desc):
+PAGE_DIR = SITE.get("pageDir", "").strip("/")
+
+
+def out_path(file):
+    """Where a page is written, relative to the site root."""
+    return file if file == "index.html" or not PAGE_DIR else f"{PAGE_DIR}/{file}"
+
+
+def rel_root(file):
+    """Prefix that leads from the page back to the site root."""
+    return "../" * out_path(file).count("/")
+
+
+def href(target, from_file):
+    """Link from one page to another page; keeps any ?query or #hash."""
+    i = min([k for k in (target.find("?"), target.find("#")) if k >= 0] or [len(target)])
+    return rel_root(from_file) + out_path(target[:i]) + target[i:]
+
+
+def head(page, title, desc, up=""):
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -24,12 +48,12 @@ def head(page, title, desc):
 <title>{E(title)}</title>
 <meta name="description" content="{E(desc)}">
 <meta name="theme-color" content="{SITE['themeColor']}">
-<link rel="icon" href="assets/cover/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{up}assets/cover/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{SITE['fonts']}">
-<link rel="stylesheet" href="css/engine.css">
-<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="{up}css/engine.css">
+<link rel="stylesheet" href="{up}css/theme.css">
 </head>"""
 
 
@@ -48,7 +72,7 @@ def body_home(p):
     return f"""{SITE['hero']}
   <section class="section"><div class="wrap">
     <div class="section-head"><div><p class="kicker">{E(p['featuredKicker'])}</p><h2 class="section-title">{p['featuredTitle']}</h2></div>
-      <a class="btn" href="archive.html">Open the archive →</a></div>
+      <a class="btn" href="{href('archive.html', 'index.html')}">Open the archive →</a></div>
     <div class="grid-cards" id="featured">{loading()}</div>
   </div></section>
   <section class="section"><div class="wrap">
@@ -57,7 +81,7 @@ def body_home(p):
   </div></section>
   <section class="section"><div class="wrap spotlight" id="spotlight"></div></section>
   <section class="section"><div class="wrap">
-    <div class="section-head"><div><p class="kicker">Story</p><h2 class="section-title">{p['arcsTitle']}</h2></div><a class="btn" href="timeline.html">Full timeline →</a></div>
+    <div class="section-head"><div><p class="kicker">Story</p><h2 class="section-title">{p['arcsTitle']}</h2></div><a class="btn" href="{href('timeline.html', 'index.html')}">Full timeline →</a></div>
     <div class="arcs" id="arcs"></div>
   </div></section>"""
 
@@ -128,7 +152,7 @@ def body_explorer(p):
 def body_tree(p):
     extra = ""
     if p.get("orgsLink"):
-        extra = f'<div class="v-actions" style="margin-top:22px"><a class="btn" href="{p["orgsLink"]}">Every clan and organization →</a></div>'
+        extra = f'<div class="v-actions" style="margin-top:22px"><a class="btn" href="{href(p["orgsLink"], "tree.html")}">Every clan and organization →</a></div>'
     return f"""{page_head(p)}
   <section class="section" style="padding-top:28px"><div class="wrap">
     <div class="trees" id="trees">{loading()}</div>{extra}
@@ -193,17 +217,18 @@ BODY = {"home": body_home, "archive": body_archive, "roster": body_roster, "expl
 
 def build(file, p):
     kind = p["kind"]
-    attrs = f' data-page="{kind}"' + (f' data-collection="{p["collection"]}"' if p.get("collection") else "")
+    up = rel_root(file)
+    attrs = f' data-page="{kind}" data-root="{up}"' + (f' data-collection="{p["collection"]}"' if p.get("collection") else "")
     if p.get("nav"):
         attrs += f' data-nav="{p["nav"]}"'
-    scripts = ["js/config.js", *[f"js/data/{d}" for d in SITE["data"]], "js/media-index.js",
-               "js/engine/core.js", "js/engine/shell.js", "js/engine/viewer.js", f"js/engine/{SCRIPT_OF[kind]}.js"]
+    scripts = [up + s for s in ["js/config.js", *[f"js/data/{d}" for d in SITE["data"]], "js/media-index.js",
+               "js/engine/core.js", "js/engine/shell.js", "js/engine/viewer.js", f"js/engine/{SCRIPT_OF[kind]}.js"]]
     foot = f"""
 <footer class="site-foot"><div class="wrap">
   <a href="{SITE['hub']}">← Anime Verse</a>
   <span>{E(SITE['footNote'])}</span>
 </div></footer>"""
-    out = f"""{head(kind, p['title'], p['desc'])}
+    out = f"""{head(kind, p['title'], p['desc'], up)}
 <body{attrs}>
 <a class="skip" href="#main">Skip to content</a>
 <header id="nav"></header>
@@ -215,8 +240,13 @@ def build(file, p):
 </body>
 </html>
 """
-    (ROOT / file).write_text(out, encoding="utf-8", newline="\n")
-    print("wrote", file)
+    target = ROOT / out_path(file)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(out, encoding="utf-8", newline="\n")
+    if out_path(file) != file and (ROOT / file).exists():
+        (ROOT / file).unlink()
+        print("removed stale", file)
+    print("wrote", out_path(file))
 
 
 if __name__ == "__main__":

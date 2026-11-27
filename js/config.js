@@ -12,20 +12,31 @@ window.V.data = window.V.data || {};
 window.V.config = (() => {
   const V = () => window.V;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  /* Every page except index.html lives in html/. tools/build_pages.py writes
+     data-root="" on index.html and data-root="../" on html/*.html, and the
+     scripts load at the end of <body>, so the attribute is readable here.
+     go(file) gives the link to a page from wherever the current page is. */
+  const ROOT = (document.body && document.body.dataset.root) || "";
+  const PAGE_DIR = "html/";
+  const go = (f) => /^index\.html/.test(f) ? ROOT + f : (ROOT ? f : PAGE_DIR + f);
   const marks = (e) => e.marks == null ? "" : e.marks === 0 ? "None (no magic)" : `${e.marks} line${e.marks > 1 ? "s" : ""}`;
 
   return {
     site: {
       name: "Mashle Verse", brand: "Mashle", short: "Mashle", storage: "mashlev",
+      /* For the engine's base-path support: site root as seen from this page,
+         and the folder that holds every page except index.html. */
+      root: ROOT, pages: PAGE_DIR, pagesDir: PAGE_DIR,
+      searchEmpty: "Try a name, house, magic or group.",
       searchHint: "Search students, Divine Visionaries, magic…",
       mark: `<svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d38a"/><stop offset="1" stop-color="#9b7bff"/></linearGradient></defs>
         <circle cx="20" cy="20" r="17" fill="none" stroke="url(#bm)" stroke-width="2"/><path d="M13 27V14l7 8 7-8v13" fill="none" stroke="url(#bm)" stroke-width="2.6" stroke-linejoin="round"/><circle cx="20" cy="9" r="2" fill="#f3d38a"/></svg>`
     },
     spoiler: {
       full: "Manga", safe: "Anime", badge: "Manga spoiler", locked: "Manga spoiler", lockedName: "Sealed record",
-      coverage: "Seasons 1 and 2, through the Divine Visionary Selection Exam",
+      coverage: "Seasons 1 and 2 (episodes 1-24), through the Divine Visionary Selection Exam and Innocent Zero's attack",
       toggle: "Manga spoilers",
-      tip: "Off: only what the anime has shown (Seasons 1 and 2). On: the manga through its final chapter.",
+      tip: "Off: only what the anime has shown (Seasons 1 and 2, episodes 1-24). On: the manga through its final chapter.",
       onText: "Manga records and details after Season 2 are now visible.",
       offText: "Only anime events (Seasons 1 and 2) are shown."
     },
@@ -107,12 +118,12 @@ window.V.config = (() => {
       tabs: {
         characters: { type: "character", label: "All characters", title: "Character Archive", kicker: "Archive", unit: "characters",
           sub: "Every student, teacher, Divine Visionary and villain. Click any card for the full profile.", facets: ["side", "rank", "org"], sorts: ["order", "name", "rank", "links"] },
-        academy: { type: "character", filter: (e) => ["student", "faculty"].includes(e.rank), label: "Easton", title: "Easton Magic Academy", kicker: "Student profiles", unit: "students and staff",
+        academy: { type: "character", filter: (e) => (e.orgs || []).includes("h-easton"), label: "Easton", title: "Easton Magic Academy", kicker: "Student profiles", unit: "students and staff",
           sub: "The students and staff of Easton Magic Academy, by house. Only houses confirmed for each character are listed.", facets: ["house", "rank"], sorts: ["order", "name", "links"] },
         villains: { type: ["character", "org"], filter: (e) => e.side === "Antagonist" || e.kind === "Antagonist group", label: "Villains", title: "Villains & Organizations", kicker: "Threats", unit: "records",
-          sub: "Magia Lupus and Innocent Zero's family.", facets: [], sorts: ["order", "name", "links"] },
+          sub: "Magia Lupus, Innocent Zero, his family and the Criminal Canes who fight for him.", facets: ["org"], sorts: ["order", "name", "links"] },
         creatures: { type: "creature", label: "Creatures", title: "Magical Creatures", kicker: "Bestiary", unit: "creatures",
-          sub: "Summoned and magical creatures. The archive only lists creatures it can source; more will be added as they are verified.",
+          sub: "Summons, exam beasts and parasites. The archive only lists creatures it can source; more will be added as they are verified.",
           emptyText: "No creature entries yet." },
         orgs: { type: "org", label: "Houses & groups", title: "Houses and Organizations", kicker: "Factions", unit: "groups",
           sub: "Easton's houses, the Divine Visionaries and the groups that oppose them.", facets: ["kind"], sorts: ["order", "name", "links"] }
@@ -141,7 +152,7 @@ window.V.config = (() => {
       magic: {
         type: "magic",
         facet: ["kind", "Classification", (e) => e.kind],
-        facetOrder: ["Divine Visionary cane", "Student magic", "Antagonist magic", "No magic"],
+        facetOrder: ["Divine Visionary cane", "Great mages", "Student magic", "Magia Lupus magic", "Innocent Zero's side", "Walkis magic", "No magic"],
         tag: (e) => e.kind,
         pickTitle: "Pick a magic",
         detail: (e, h) => `<p>${esc(e.bio)}</p><h4>Users</h4><div class="chip-row">${h.refs(e, "users") || '<span class="soft">No visible user</span>'}</div>
@@ -160,7 +171,7 @@ window.V.config = (() => {
         detail: (e, h) => `<div class="mark-figure" aria-hidden="true">${Array.from({ length: Math.max(e.marks, 0) }, () => "<i></i>").join("") || "<span>no mark</span>"}</div>
           <div class="stat-table"><div class="k">Magic marks</div><div>${esc(marks(e))}</div><div class="k">Magic</div><div>${h.users("magic", e.id) || "Not stated"}</div><div class="k">Standing</div><div>${h.rank(e)}</div></div>
           <p>${esc(e.markNote || e.bio)}</p>`,
-        intro: () => `<p class="lead">A magic mark is the line pattern on a mage's face that shows their magical talent. Most mages carry one line; two lines mark rare talent; three lines are almost unheard of. Only marks confirmed in the story are listed here.</p>`
+        intro: () => `<p class="lead">A magic mark is the line pattern on a mage's face that shows their magical talent. Most mages carry one line; two lines mark rare talent; three lines are almost unheard of. Mash has none: the mark he wears is painted on. Only marks confirmed in the story are listed here.</p>`
       }
     },
 
@@ -191,54 +202,54 @@ window.V.config = (() => {
     },
 
     nav: [
-      ["home", "index.html", "Home"],
-      ["archive", "archive.html", "Archive"],
-      ["roster", "visionaries.html", "Visionaries"],
-      ["explorer-magic", "magic.html", "Magic"],
-      ["explorer-marks", "marks.html", "Marks"],
-      ["compare", "compare.html", "Compare"],
-      ["network", "network.html", "Relations"],
-      ["timeline", "timeline.html", "Timeline"]
+      ["home", go("index.html"), "Home"],
+      ["archive", go("archive.html"), "Archive"],
+      ["roster", go("visionaries.html"), "Visionaries"],
+      ["explorer-magic", go("magic.html"), "Magic"],
+      ["explorer-marks", go("marks.html"), "Marks"],
+      ["compare", go("compare.html"), "Compare"],
+      ["network", go("network.html"), "Relations"],
+      ["timeline", go("timeline.html"), "Timeline"]
     ],
     quick: [
-      ["archive.html#characters", "Character Archive", "Every student, mage and villain"],
-      ["archive.html#academy", "Easton Magic Academy", "Student profiles by house"],
-      ["visionaries.html", "Divine Visionaries", "The eight canes"],
-      ["magic.html", "Magic explorer", "Every magic by classification"],
-      ["marks.html", "Magic Mark gallery", "Lines of talent"],
-      ["archive.html#villains", "Villains & Organizations", "Magia Lupus, Innocent Zero"],
-      ["archive.html#creatures", "Magical Creatures", "Summons and beasts"],
-      ["compare.html", "Compare", "Two characters side by side"],
-      ["network.html", "Relationship map", "Friends, rivals and family"],
-      ["timeline.html", "Story timeline", "From the forest to the exam"]
+      [go("archive.html#characters"), "Character Archive", "Every student, mage and villain"],
+      [go("archive.html#academy"), "Easton Magic Academy", "Student profiles by house"],
+      [go("visionaries.html"), "Divine Visionaries", "The eight canes"],
+      [go("magic.html"), "Magic explorer", "Every magic by classification"],
+      [go("marks.html"), "Magic Mark gallery", "Lines of talent"],
+      [go("archive.html#villains"), "Villains & Organizations", "Magia Lupus, Innocent Zero, Criminal Canes"],
+      [go("archive.html#creatures"), "Magical Creatures", "Summons and beasts"],
+      [go("compare.html"), "Compare", "Two characters side by side"],
+      [go("network.html"), "Relationship map", "Friends, rivals and family"],
+      [go("timeline.html"), "Story timeline", "From the forest to Innocent Zero's attack"]
     ],
 
     home: {
       stats: [
-        ["Characters", () => V().ofType("character").filter((e) => V().visible(e)).length, "archive.html#characters"],
-        ["Divine Visionaries", () => V().ofType("character").filter((e) => V().visible(e) && e.rank === "dv").length, "visionaries.html"],
-        ["Magic", () => V().ofType("magic").filter((e) => V().visible(e)).length, "magic.html"],
-        ["Relationships", () => V().data.links.filter((l) => V().linkVisible(l)).length, "network.html"],
-        ["Timeline events", () => V().data.timeline.filter((t) => t.sp !== "m" || V().spoilers.on).length, "timeline.html"]
+        ["Characters", () => V().ofType("character").filter((e) => V().visible(e)).length, go("archive.html#characters")],
+        ["Divine Visionaries", () => V().ofType("character").filter((e) => V().visible(e) && e.rank === "dv").length, go("visionaries.html")],
+        ["Magic", () => V().ofType("magic").filter((e) => V().visible(e)).length, go("magic.html")],
+        ["Relationships", () => V().data.links.filter((l) => V().linkVisible(l)).length, go("network.html")],
+        ["Timeline events", () => V().data.timeline.filter((t) => t.sp !== "m" || V().spoilers.on).length, go("timeline.html")]
       ],
       featuredTypes: ["character"],
       featuredLimit: 8,
       sections: [
-        { title: "Character Archive", text: "Search, filter and sort every character.", href: "archive.html#characters", icon: "✦", color: "#f3d38a", count: () => `${V().ofType("character").filter((e) => V().visible(e)).length} records` },
-        { title: "Easton Magic Academy", text: "Student profiles by house.", href: "archive.html#academy", icon: "⌂", color: "#5aa9ff" },
-        { title: "Divine Visionaries", text: "The eight canes of the Magic Bureau.", href: "visionaries.html", icon: "♛", color: "#f3d38a" },
-        { title: "Magic Classification", text: "Explore every magic by type and user.", href: "magic.html", icon: "✧", color: "#9b7bff" },
-        { title: "Magic Marks", text: "The lines that rank a mage's talent.", href: "marks.html", icon: "≡", color: "#c9a3ff" },
-        { title: "Magical Creatures", text: "Summons and beasts.", href: "archive.html#creatures", icon: "❦", color: "#5aa9ff" },
-        { title: "Villains & Organizations", text: "Magia Lupus and Innocent Zero's family.", href: "archive.html#villains", icon: "✠", color: "#ef5350" },
-        { title: "Compare", text: "Two characters side by side, facts only.", href: "compare.html", icon: "⇄", color: "#66bb6a" },
-        { title: "Relationship map", text: "An interactive graph of every bond.", href: "network.html", icon: "❖", color: "#f48fb1" },
-        { title: "Story Timeline", text: "From the forest to the selection exam.", href: "timeline.html", icon: "⌛", color: "#4dd0e1" }
+        { title: "Character Archive", text: "Search, filter and sort every character.", href: go("archive.html#characters"), icon: "✦", color: "#f3d38a", count: () => `${V().ofType("character").filter((e) => V().visible(e)).length} records` },
+        { title: "Easton Magic Academy", text: "Student profiles by house.", href: go("archive.html#academy"), icon: "⌂", color: "#5aa9ff" },
+        { title: "Divine Visionaries", text: "The eight canes of the Magic Bureau.", href: go("visionaries.html"), icon: "♛", color: "#f3d38a" },
+        { title: "Magic Classification", text: "Explore every magic by type and user.", href: go("magic.html"), icon: "✧", color: "#9b7bff" },
+        { title: "Magic Marks", text: "The lines that rank a mage's talent.", href: go("marks.html"), icon: "≡", color: "#c9a3ff" },
+        { title: "Magical Creatures", text: "Summons, exam beasts and parasites.", href: go("archive.html#creatures"), icon: "❦", color: "#5aa9ff" },
+        { title: "Villains & Organizations", text: "Magia Lupus, Innocent Zero and the Criminal Canes.", href: go("archive.html#villains"), icon: "✠", color: "#ef5350" },
+        { title: "Compare", text: "Two characters side by side, facts only.", href: go("compare.html"), icon: "⇄", color: "#66bb6a" },
+        { title: "Relationship map", text: "An interactive graph of every bond.", href: go("network.html"), icon: "❖", color: "#f48fb1" },
+        { title: "Story Timeline", text: "From the forest to Innocent Zero's attack on the exam.", href: go("timeline.html"), icon: "⌛", color: "#4dd0e1" }
       ],
       spotlight: {
-        kicker: "Divine Visionaries", title: "The eight canes", cta: "Open the Divine Visionary ranking", href: "visionaries.html",
+        kicker: "Divine Visionaries", title: "The eight canes", cta: "Open the Divine Visionary ranking", href: go("visionaries.html"),
         text: "The Magic Bureau's greatest mages, each known by a cane. Becoming one is Mash's way to protect his father.",
-        ids: () => ["rayne", "orter", "ryoh", "kaldo", "agito", "tsurara"]
+        ids: () => ["rayne", "orter", "ryoh", "kaldo", "agito", "tsurara", "renatus", "sophina"]
       }
     },
 

@@ -48,7 +48,14 @@
     });
     return out;
   }
-  const degree = (id) => new Set(connections(id, { all: true }).map((x) => x.e.id)).size;
+  /* degree is asked for every name in the side list on every redraw: cache it
+     per spoiler mode and type selection */
+  const degCache = new Map();
+  const degree = (id) => {
+    const k = `${V.spoilers.on}|${[...state.types].join()}|${id}`;
+    if (!degCache.has(k)) degCache.set(k, new Set(connections(id, { all: true }).map((x) => x.e.id)).size);
+    return degCache.get(k);
+  };
 
   /* ---------------------------------------------------------------- flow */
   function groupBox(name, rows, i) {

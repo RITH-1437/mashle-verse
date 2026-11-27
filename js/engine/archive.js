@@ -20,8 +20,11 @@
     order: ["Story order", (a, b) => arcIndex(a) - arcIndex(b) || a._order - b._order],
     name: ["Name A–Z", (a, b) => V.show.name(a).localeCompare(V.show.name(b))],
     rank: [C.labels.rankSort || "Rank", (a, b) => V.rankOf(b).n - V.rankOf(a).n || a._order - b._order],
-    links: ["Most connected", (a, b) => V.relations(b.id).length - V.relations(a.id).length]
+    links: ["Most connected", (a, b) => links(b) - links(a) || a._order - b._order]
   };
+  /* connection counts, memoised for one sort (V.relations walks every record) */
+  let linkMemo = new Map();
+  function links(e) { if (!linkMemo.has(e.id)) linkMemo.set(e.id, V.relations(e.id).length); return linkMemo.get(e.id); }
   const PAGE_SIZES = [8, 12, 16, 24];
   const state = { tab: KEYS[0], page: 1, per: 12, q: "", sort: "order", content: "all", facet: {} };
   const p0 = Number(V.util.store.get("per-page")); if (PAGE_SIZES.includes(p0)) state.per = p0;
@@ -48,6 +51,7 @@
       return on.every(([k, v]) => { const got = F[k].get(e); return Array.isArray(got) ? got.includes(v) : got === v; });
     });
     const sort = SORTS[state.sort] || SORTS.order;
+    linkMemo = new Map();
     return list.sort((a, b) => (V.visible(b) - V.visible(a)) || sort[1](a, b));
   }
 
