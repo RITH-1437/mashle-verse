@@ -52,8 +52,8 @@ def head(page, title, desc, up=""):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{SITE['fonts']}">
-<link rel="stylesheet" href="{up}css/engine.css">
-<link rel="stylesheet" href="{up}css/theme.css">
+<link rel="stylesheet" href="{up}css/engine.min.css">
+<link rel="stylesheet" href="{up}css/theme.min.css">
 </head>"""
 
 
@@ -236,7 +236,7 @@ def build(file, p):
   {BODY[kind](p)}
 </main>{foot}
 <noscript><p class="wrap" style="padding:20px 0">This encyclopedia needs JavaScript to load its records.</p></noscript>
-{chr(10).join(f'<script src="{s}"></script>' for s in scripts)}
+{chr(10).join(f'<script src="{s[:-3]}.min.js"></script>' for s in scripts)}
 </body>
 </html>
 """
