@@ -536,3 +536,10 @@ button.ability:hover { border-color: var(--c, var(--accent)); }
 .site-foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; justify-content: space-between; }
 .site-foot a { color: var(--text-soft); text-decoration: none; font-weight: 600; }
 .site-foot a:hover { color: var(--text); }
+
+/* Back-to-hub button in the header (label hides on narrow screens) */
+.hub-link { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; }
+.hub-menu-link { display: none !important; }
+@media (max-width: 1400px) { .hub-link .lbl { display: none; } }
+/* once the links fold into the menu, the hub link moves into the menu too */
+@media (max-width: 1080px) { .hub-link { display: none; } .hub-menu-link { display: block !important; } }

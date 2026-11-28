@@ -41,8 +41,10 @@
           <span class="brand-text"><span class="bt-full">${esc(C.site.brand)}</span><span class="bt-short">${esc(C.site.short)}</span> <em>Verse</em></span></a>
         <nav class="nav-links" id="nav-links" aria-label="Main">
           ${C.nav.map(([k, href, label]) => `<a href="${V.href(href)}" data-key="${k}">${esc(label)}</a>`).join("")}
+          <a class="hub-menu-link" href="https://rith-1437.github.io/anime-verse/">← Anime Verse</a>
         </nav>
         <div class="nav-tools">
+          <a class="btn sm hub-link" href="https://rith-1437.github.io/anime-verse/" title="Back to Anime Verse" aria-label="Back to Anime Verse"><span aria-hidden="true">←</span><span class="lbl">Anime Verse</span></a>
           <button type="button" class="btn sm nav-search" id="open-search" aria-label="Search (Ctrl+K)">${ICON.search}<span class="lbl">Search</span><kbd>Ctrl K</kbd></button>
           <label class="switch spoiler-switch" title="${esc(SP.tip)}">
             <input type="checkbox" id="spoiler-toggle" ${V.spoilers.on ? "checked" : ""}>

@@ -77,3 +77,17 @@
   .brand { gap: 7px; font-size: 14px; letter-spacing: .2px; }
   .brand-mark { width: 28px; height: 28px; }
 }
+
+/* Header fit with the hub button. The header stops widening at ~1300px, where the
+   "Anime Verse" label would push nav links out of view, so the hub button stays
+   arrow-only (its title / aria-label still say "Back to Anime Verse"). Between the
+   menu breakpoint and 1280px the search and spoiler controls go compact early. */
+.hub-link .lbl { display: none; }
+@media (max-width: 1280px) {
+  .nav-search .lbl, .nav-search kbd { display: none; }
+  .spoiler-switch .lbl-long { display: none; }
+  .spoiler-switch .lbl-short { display: inline; }
+}
+@media (min-width: 1081px) and (max-width: 1140px) { .nav-links a { padding: 8px 6px; } }
+/* Smallest phones: the switch drops its "Spoilers" text (the tooltip remains) so the brand fits. */
+@media (max-width: 380px) { .spoiler-switch .lbl-short { display: none; } }
